@@ -198,6 +198,28 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans)}
   .readout{width:min(270px,calc(100vw - 32px))}
 }
 
+/* ── 블록 계획 패널 ── */
+.block-panel{
+  position:fixed;left:50%;bottom:24px;z-index:30;
+  transform:translateX(-50%) translateY(16px);
+  width:min(560px,calc(100vw - 24px));
+  background:rgba(23,29,39,.95);border:1px solid var(--line);border-radius:14px;
+  padding:12px 14px;opacity:0;pointer-events:none;transition:.25s;backdrop-filter:blur(8px);
+}
+.block-panel.show{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}
+.bp-title{font-family:var(--mono);font-size:11px;color:var(--act);margin-bottom:8px}
+.bp-avail{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.bp-block{border:1px solid var(--line);background:#1C2433;color:var(--ink);border-radius:9px;padding:7px 10px;font-size:12.5px;cursor:pointer}
+.bp-block:disabled{opacity:.45}
+.bp-seq{display:flex;flex-wrap:wrap;gap:6px;min-height:36px;border:1px dashed #39455A;border-radius:9px;padding:6px;margin-bottom:8px}
+.bp-chip{border:1px solid var(--act);background:rgba(255,180,84,.12);color:var(--act);border-radius:9px;padding:6px 9px;font-size:12px;cursor:pointer}
+.bp-empty{color:var(--mut);font-size:11.5px;align-self:center;padding:0 4px}
+.bp-actions{display:flex;gap:8px;justify-content:flex-end}
+#bpRun{background:var(--act);color:#10141B;border:0;border-radius:9px;padding:8px 16px;font-weight:700;cursor:pointer;font-size:13px}
+#bpRun:disabled{opacity:.4}
+#bpClear{background:none;border:1px solid var(--line);color:var(--mut);border-radius:9px;padding:8px 12px;cursor:pointer;font-size:12px}
+body.touch .block-panel{bottom:200px}
+
 /* ── 터치 컨트롤 (모바일) ── */
 .touch-ui{display:none;position:fixed;inset:0;z-index:12;pointer-events:none}
 body.touch .touch-ui{display:block}
@@ -256,6 +278,9 @@ body.touch .readout .ghost-note{font-size:9.5px;padding:0 12px 8px}
 .mission-banner.show{display:block}
 .mb-title{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;color:var(--act);margin-bottom:2px}
 .mb-goal{font-size:14px;font-weight:600;color:var(--ink)}
+.mb-step{
+  font-family:var(--mono);font-size:11.5px;color:var(--act);margin-top:4px;
+}
 .mb-meta{display:flex;justify-content:space-between;align-items:center;margin-top:5px}
 .mb-meta .tm{font-family:var(--mono);font-size:12px;color:var(--mut)}
 .mb-meta .tm.over{color:var(--bad)}
@@ -363,6 +388,7 @@ body.touch .readout .ghost-note{font-size:9.5px;padding:0 12px 8px}
 <div class="mission-banner" id="mBanner">
   <div class="mb-title" id="mbTitle"></div>
   <div class="mb-goal" id="mbGoal"></div>
+  <div class="mb-step" id="mbStep"></div>
   <div class="mb-meta">
     <span class="tm" id="mbTimer"></span>
     <span>
@@ -587,6 +613,16 @@ body.touch .readout .ghost-note{font-size:9.5px;padding:0 12px 8px}
   <div class="toggle"><b>키보드 필요</b> · 터치는 카메라만</div>
 </div>
 
+<div class="block-panel" id="blockPanel">
+  <div class="bp-title">🧠 행동 계획 — 블록을 순서대로 조립해 로봇에게 넘기세요</div>
+  <div class="bp-avail" id="bpAvail"></div>
+  <div class="bp-seq" id="bpSeq"></div>
+  <div class="bp-actions">
+    <button id="bpClear">지우기</button>
+    <button id="bpRun">▶ 계획 실행</button>
+  </div>
+</div>
+
 <div class="touch-ui" id="touchUI">
   <div class="joy" id="joyL"><div class="joy-label">주행</div><div class="knob" id="knobL"></div></div>
   <div class="joy" id="joyR"><div class="joy-label">팔</div><div class="knob" id="knobR"></div></div>
@@ -620,6 +656,8 @@ var ERAS = [
   {model:'BitVLA / PD-VLA / RTC', gen:'Mk.5 온디바이스 에디션', hz:'120 Hz', rate:120, grid:0, latency:0.35, rtc:true, snap:0.16,
    tip:"'25 온디바이스 — Mk.5. 0.35초 늦은 관측을 RTC가 예측 보정 (빨간 점과 비교)"}
 ];
+/* 세대별 잡기 허용 반경 — 격자 기체는 격자-오프셋만큼 넓어야 함(소프트락 방지) */
+ERAS[0].grab=0.44;ERAS[1].grab=0.36;ERAS[2].grab=0.32;ERAS[3].grab=0.32;ERAS[4].grab=0.32;
 var era = 0;
 
 /* ════════════════ 씬 ════════════════ */
@@ -908,6 +946,16 @@ var ghostM=new THREE.Mesh(new THREE.SphereGeometry(0.05,12,10),
   new THREE.MeshBasicMaterial({color:0xFF5D5D,transparent:true,opacity:0.85}));
 ghostM.visible=false;scene.add(ghostM);
 
+var gripDropPos=new Float32Array(6);
+var gripDropGeo=new THREE.BufferGeometry();
+gripDropGeo.setAttribute('position',new THREE.BufferAttribute(gripDropPos,3));
+var gripDrop=new THREE.Line(gripDropGeo,
+  new THREE.LineBasicMaterial({color:0xFFB454,transparent:true,opacity:0.35}));
+gripDrop.frustumCulled=false;scene.add(gripDrop);
+var gripShadow=new THREE.Mesh(new THREE.TorusGeometry(0.09,0.012,8,28),
+  new THREE.MeshBasicMaterial({color:0xFFB454,transparent:true,opacity:0.5}));
+gripShadow.rotation.x=Math.PI/2;scene.add(gripShadow);
+
 var snapGrid=new THREE.GridHelper(3,6,0xFFB454,0xFFB454);
 snapGrid.material.transparent=true;snapGrid.material.opacity=0.14;
 scene.add(snapGrid);
@@ -927,7 +975,7 @@ var MAT_PAD=new THREE.Vector3(4.5,0,3.0);
 var matPad=cyl(0.55,0.05,MAT.facDark,36);matPad.position.copy(MAT_PAD);matPad.position.y=0.025;
 matPad.receiveShadow=true;scene.add(matPad);
 var matPadRing=new THREE.Mesh(new THREE.TorusGeometry(0.55,0.018,10,48),
-  new THREE.MeshBasicMaterial({color:0xB392F9,transparent:true,opacity:0.7}));
+  new THREE.MeshBasicMaterial({color:0x6B7689,transparent:true,opacity:0.45}));
 matPadRing.rotation.x=Math.PI/2;matPadRing.position.copy(MAT_PAD);matPadRing.position.y=0.06;
 scene.add(matPadRing);
 
@@ -968,7 +1016,7 @@ var cartTop=box(0.5,0.04,0.44,MAT.dark);cartTop.position.y=0.28;cart.add(cartTop
   var cw=cyl(0.07,0.05,MAT.tire,12);cw.rotation.x=Math.PI/2;
   cw.position.set(p[0],0.07,p[1]);cart.add(cw);
 });
-var cartRingMat=new THREE.MeshBasicMaterial({color:0x53D7E0,transparent:true,opacity:0.9});
+var cartRingMat=new THREE.MeshBasicMaterial({color:0x7BD88F,transparent:true,opacity:0.9});
 var cartRing=new THREE.Mesh(new THREE.TorusGeometry(0.22,0.018,10,36),cartRingMat);
 cartRing.rotation.x=Math.PI/2;cartRing.position.y=0.32;cart.add(cartRing);
 var CART_C=new THREE.Vector3(0,0.55,TRACK_Z);
@@ -981,7 +1029,7 @@ function updateCart(dt){
   cartSpd=Math.abs(cartVel.x);
   CART_C.set(cart.position.x,0.55,TRACK_Z);
   cartFlash=Math.max(0,cartFlash-dt*1.5);
-  cartRingMat.color.setHex(cartFlash>0?0x7BD88F:(cartSpd>0.4?0x53D7E0:0xFF5D5D));
+  cartRingMat.color.setHex(cartFlash>0?0xFFFFFF:(cartSpd>0.4?0x7BD88F:0xFF5D5D));
   if(ballCartUntil>0){
     if(simT<ballCartUntil){ball.position.set(CART_C.x,0.41,CART_C.z);ball.userData.vy=0;}
     else{ballCartUntil=0;spawnMaterial();}
@@ -1054,10 +1102,44 @@ function deliverSuccess(){
   missionEvent('deliver');
 }
 
+/* ════════════════ 차체 충돌체 (벽뚫기 방지) ════════════════ */
+var COLLIDERS=null; // factory가 이 코드보다 뒤에 정의되므로, 첫 프레임에 지연 초기화
+function buildColliders(){
+  function fw(lx,lz,r){var p=factory.localToWorld(new THREE.Vector3(lx,0,lz));return {x:p.x,z:p.z,r:r};}
+  COLLIDERS=[
+    fw(2.55,-0.9,1.15),  // 사일로
+    fw(1.95,0,1.5),      // 투입 컨베이어·호퍼
+    fw(-1.1,2.4,1.5),    // 배출 컨베이어·패드
+    {x:SOCKET_BASE.x,z:SOCKET_BASE.z,r:0.85} // 조립 소켓 받침
+  ];
+}
+function resolveColliders(){
+  if(!COLLIDERS)buildColliders();
+  for(var ci=0;ci<COLLIDERS.length;ci++){
+    var c=COLLIDERS[ci];
+    var dx=robot.position.x-c.x,dz=robot.position.z-c.z;
+    var d=Math.hypot(dx,dz);
+    if(d<c.r&&d>1e-4){
+      robot.position.x=c.x+dx/d*c.r;
+      robot.position.z=c.z+dz/d*c.r;
+    }
+  }
+  var px=Math.max(TRACK_X0-0.3,Math.min(TRACK_X1+0.3,robot.position.x)); // 카트 트랙(선분)
+  var sx=robot.position.x-px,sz=robot.position.z-TRACK_Z;
+  var sd=Math.hypot(sx,sz),CR=0.85;
+  if(sd<CR){
+    if(sd<1e-4){sz=1;sd=1;}
+    robot.position.x=px+sx/sd*CR;
+    robot.position.z=TRACK_Z+sz/sd*CR;
+  }
+}
+
 /* ════════════════ 지지면 충돌 (공이 구조물 속으로 가라앉지 않게) ════════════════ */
 var _fl=new THREE.Vector3();
+var supportDeflect=false; // 직전 supportHeightAt 호출이 공장 설비 면이었는지
 function supportHeightAt(x,z){
   var s=0;
+  supportDeflect=false;
   if(Math.hypot(x-MAT_PAD.x,z-MAT_PAD.z)<0.57)s=Math.max(s,0.05);          // 재료 패드
   if(Math.hypot(x-ZONE_C.x,z-ZONE_C.z)<0.36)s=Math.max(s,0.05);            // 배달 패드
   if(Math.hypot(x-SOCKET_BASE.x,z-SOCKET_BASE.z)<0.37)s=Math.max(s,0.61);  // 조립 소켓 받침
@@ -1069,10 +1151,11 @@ function supportHeightAt(x,z){
   _fl.set(x,0,z);                                                          // 공장 구조물(정적)
   factory.worldToLocal(_fl);
   var fx=_fl.x,fz=_fl.z;
-  if(Math.abs(fx)<1.85&&Math.abs(fz)<1.45)s=Math.max(s,2.36);              // 지붕
-  if(Math.hypot(fx-2.55,fz+0.9)<0.55)s=Math.max(s,1.9);                    // 사일로
-  if(fx>0.6&&fx<2.5&&Math.abs(fz)<0.33)s=Math.max(s,0.62);                 // 투입 컨베이어
-  if(Math.abs(fx+1.1)<0.33&&fz>1.1&&fz<2.8)s=Math.max(s,0.62);             // 배출 컨베이어
+  function fmax(v){if(v>s){s=v;supportDeflect=true;}}
+  if(Math.abs(fx)<1.85&&Math.abs(fz)<1.45)fmax(2.36);              // 지붕 (튕김)
+  if(Math.hypot(fx-2.55,fz+0.9)<0.55)fmax(1.9);                    // 사일로 (튕김)
+  if(fx>0.6&&fx<2.5&&Math.abs(fz)<0.33)fmax(0.62);                 // 투입 컨베이어 (튕김)
+  if(Math.abs(fx+1.1)<0.33&&fz>1.1&&fz<2.8)fmax(0.62);             // 배출 컨베이어 (튕김)
   if(Math.hypot(fx+1.1,fz-3.2)<0.64)s=Math.max(s,0.05);                    // 배출 패드
   return s;
 }
@@ -1081,6 +1164,55 @@ function supportHeightAt(x,z){
 var ballBeam=new THREE.Mesh(new THREE.CylinderGeometry(0.015,0.015,2.2,8),
   new THREE.MeshBasicMaterial({color:0xB392F9,transparent:true,opacity:0.2}));
 ballBeam.visible=false;scene.add(ballBeam);
+
+/* ════════════════ 미션 목표 마커 + 바닥 유도선 ════════════════ */
+var objCone=new THREE.Mesh(new THREE.ConeGeometry(0.16,0.32,16),
+  new THREE.MeshBasicMaterial({color:0xFFB454}));
+objCone.rotation.x=Math.PI;objCone.visible=false;scene.add(objCone);
+var objPillar=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,3.2,8),
+  new THREE.MeshBasicMaterial({color:0xFFB454,transparent:true,opacity:0.14}));
+objPillar.visible=false;scene.add(objPillar);
+var guidePos=new Float32Array(6);
+var guideGeo=new THREE.BufferGeometry();
+guideGeo.setAttribute('position',new THREE.BufferAttribute(guidePos,3));
+var guideLine=new THREE.Line(guideGeo,
+  new THREE.LineDashedMaterial({color:0xFFB454,transparent:true,opacity:0.55,dashSize:0.3,gapSize:0.2}));
+guideLine.frustumCulled=false;guideLine.visible=false;scene.add(guideLine);
+
+function updateObjectiveMarker(){
+  var show=false,pos=null,col=0xFFB454,step='';
+  if(mission.active){
+    var M=MISSIONS[mission.idx];
+    if(M.blocks){
+      step=auto.on?'🤖 계획 실행 중 — System 1이 그대로 수행합니다':'🧠 블록 패널에서 행동 순서를 조립하세요';
+    }else if(M.auto){
+      step='🤖 자율 동작을 관찰하세요 — 조작이 잠겨 있습니다';
+    }else if(held!==ball){
+      if(ball.visible){pos=ball.position;col=0xB392F9;step='1단계 — 보라 공(빛기둥) 집기';show=true;}
+    }else{
+      if(M.type==='produce'){pos=INPUT_W;step='2단계 — 공장 투입구(청록 링)에 넣기';}
+      else if(M.type==='socket'){pos=SOCKET_W;step='2단계 — 보라 소켓 링에 살짝 꽂기';}
+      else if(M.type==='cart'){pos=CART_C;step='2단계 — 초록 링 카트에, 같이 움직이며 놓기';}
+      else if(M.type==='deliver'){pos=DELIVER_W;step='2단계 — 빨간 원 안 주황 패드에 내려놓기';}
+      show=!!pos;
+    }
+  }
+  if(show&&pos){
+    objCone.position.set(pos.x,pos.y+0.75+0.12*Math.sin(simT*4),pos.z);
+    objCone.material.color.setHex(col);
+    objPillar.position.set(pos.x,1.7,pos.z);
+    objPillar.material.color.setHex(col);
+    guidePos[0]=robot.position.x;guidePos[1]=0.04;guidePos[2]=robot.position.z;
+    guidePos[3]=pos.x;guidePos[4]=0.04;guidePos[5]=pos.z;
+    guideGeo.attributes.position.needsUpdate=true;
+    guideLine.computeLineDistances();
+    var gd=Math.hypot(pos.x-robot.position.x,pos.z-robot.position.z);
+    document.getElementById('mbStep').textContent=step+' · '+gd.toFixed(1)+'m';
+  }else{
+    document.getElementById('mbStep').textContent=step;
+  }
+  objCone.visible=show;objPillar.visible=show;guideLine.visible=show;
+}
 
 
 /* ════════════════ 자동화 공장 ════════════════ */
@@ -1209,6 +1341,8 @@ function spawnMaterial(){
   ball.visible=true;
   ball.position.set(MAT_PAD.x,BALL_R+0.05,MAT_PAD.z);
   ball.userData.vy=0;
+  ball.userData.vx=0;ball.userData.vz=0;
+  ball.userData.thrown=false;
 }
 spawnMaterial();
 var procBall=new THREE.Mesh(new THREE.SphereGeometry(BALL_R,18,14),
@@ -1237,7 +1371,6 @@ function getOutSlot(idx){
 }
 
 var held=null,gripOpen=true;
-var GRAB_RANGE=0.42;
 function grabbables(){
   var arr=[];
   if(ball.visible&&held!==ball)arr.push(ball);
@@ -1246,7 +1379,7 @@ function grabbables(){
   return arr;
 }
 function nearestGrabbable(){
-  var eeW=getEEWorld(),best=null,bd=GRAB_RANGE;
+  var eeW=getEEWorld(),best=null,bd=ERAS[era].grab;
   var arr=grabbables();
   for(var i=0;i<arr.length;i++){
     var wp=arr[i].getWorldPosition(new THREE.Vector3());
@@ -1408,6 +1541,11 @@ function toggleGrip(){
     scene.attach(held);
     held.userData.vy=0;
     var wasBall=(held===ball);
+    if(wasBall){
+      ball.userData.thrown=(eeSpeed>0.6);
+      ball.userData.vx=Math.max(-3,Math.min(3,eeVel.x*0.6));
+      ball.userData.vz=Math.max(-3,Math.min(3,eeVel.z*0.6));
+    }
     held=null;gripOpen=true;
     if(wasBall&&wp.distanceTo(INPUT_W)<0.5){
       facIntake();
@@ -1715,19 +1853,24 @@ var MISSIONS=[
   goal:'자율 모드가 켜집니다. 손 떼고 지켜보세요 — Mk.3가 혼자 해낼까요?',
   unlock:3,svg:FIG_SYS,
   brief:'<p>헤매다 멈췄죠. Mk.3의 손은 완벽하지만 <b>"뭘 먼저 할지, 어디로 갈지"를 모릅니다.</b> 지금까지 그 계획은 전부 당신(사람)이 했어요. 2025년, 로봇 안에 <b>계획하는 두뇌(System 2)</b>를 넣은 듀얼 시스템이 등장합니다 — GR00T N1, Gemini Robotics.</p>'},
- {era:3,no:7,type:'produce',auto:'ok',cloud:true,
-  title:'미션 7 — 진짜 자율 (그런데…)',
-  goal:'Mk.4가 혼자 일합니다. 손 떼고 지켜보세요 — 그런데 자꾸 멈칫하죠?',
+ {era:2,no:7,type:'produce',blocks:'user',
+  title:'미션 7 — 미니게임 ③: 계획을 짜다',
+  goal:'블록으로 행동 순서를 조립해 Mk.3에게 넘기세요 — 지금은 당신이 System 2입니다',
+  unlock:3,svg:FIG_SYS,
+  brief:'<p>완벽하게 해냈죠 — 손(System 1)은 이미 완성돼 있었으니까요. 방금 블록을 조립한 <b>당신이 바로 System 2(계획 두뇌)</b>였습니다. 순서를 틀리면 로봇이 그대로 틀리게 수행하는 것도 보셨을 거예요 — <b>System 1은 판단하지 않습니다.</b> 2025년의 혁신은, 이 계획자를 로봇 안에 넣은 것입니다.</p>'},
+ {era:3,no:8,type:'produce',blocks:'auto',cloud:true,
+  title:'미션 8 — 스스로 계획을 세우다 (그런데…)',
+  goal:'지켜보세요 — 이번엔 블록을 Mk.4가 스스로 채웁니다. 그런데 자꾸 멈칫하죠?',
   unlock:3,svg:FIG_CLOUD,
   brief:'',
   briefFn:function(){return '<p>혼자서 한 사이클을 해냈어요! 그런데 <b>클라우드가 '+cloud.count+'번 끊겨</b> 그때마다 로봇이 얼어붙었죠. Mk.4의 거대한 두뇌는 서버에 있거든요. 그리고 다음 주문지가 하필… <b>신호가 아예 안 터지는 곳</b>이네요.</p>';}},
- {era:3,no:8,type:'deliver',wall:true,failAfter:50,
-  title:'미션 8 — 미니게임 ③: 음영 구역 배달',
+ {era:3,no:9,type:'deliver',wall:true,failAfter:50,
+  title:'미션 9 — 미니게임 ④: 음영 구역 배달',
   goal:'재료를 빨간 원(통신 음영 구역) 안 배달 패드까지 — 직접 들고 들어가 보세요 (50초)',
   timed:true,unlock:4,svg:FIG_CLOUD,
   brief:'<p>구역에 들어서는 순간 <b>두뇌(클라우드)와의 연결이 끊겨</b> 로봇이 얼어붙고, 안전 모드가 강제로 끌어냈죠. 터널, 지하, 재난 현장 — <b>로봇이 가장 필요한 곳일수록 신호가 없습니다.</b> 답은 하나, 두뇌를 몸에 싣는 것. 1-bit 압축(BitVLA)이 그걸 가능하게 했어요.</p>'},
- {era:4,no:9,type:'deliver',
-  title:'미션 9 — 두뇌를 싣다',
+ {era:4,no:10,type:'deliver',
+  title:'미션 10 — 두뇌를 싣다',
   goal:'Mk.5(온디바이스)로 음영 구역 배달 완수 + 빨간 점도 관찰!',
   timed:true,unlock:5,svg:FIG_RTC,
   quiz:{q:'온디바이스(Mk.5)에도 0.35초 지연은 남아요. 그런데 왜 안 끊길까요?',
@@ -1749,13 +1892,13 @@ function socketSuccess(){
 }
 
 /* ── 자율(AUTO) 모듈 ── */
-var auto={on:false,mode:'ok',phase:0,phaseT:0};
+var auto={on:false,mode:'fail',phase:0,phaseT:0,step:0,plan:[]};
 var HOPPER_APPROACH=(function(){
   var dir=INPUT_W.clone().sub(FACTORY_C);dir.y=0;dir.normalize();
   var p=INPUT_W.clone();p.y=0;
   return p.add(dir.multiplyScalar(1.45));
 })();
-function startAuto(mode){auto.on=true;auto.mode=mode;auto.phase=0;auto.phaseT=0;}
+function startAuto(mode){auto.on=true;auto.mode=mode;auto.phase=0;auto.phaseT=0;auto.step=0;}
 function stopAuto(){auto.on=false;}
 function angNorm(a){while(a>Math.PI)a-=2*Math.PI;while(a<-Math.PI)a+=2*Math.PI;return a;}
 function clampTargetL(v){
@@ -1765,62 +1908,90 @@ function clampTargetL(v){
   if(rd<0.45){var s=0.45/Math.max(rd,1e-4);v.x*=s;v.z*=s;}
   return v;
 }
-function autoStep(dt){
+function driveTo(p,stop){
+  var dx=p.x-robot.position.x,dz=p.z-robot.position.z;
+  var dist=Math.hypot(dx,dz);
+  var des=Math.atan2(-dz,dx);
+  var diff=angNorm(des-robot.rotation.y);
+  return {fwd:(Math.abs(diff)<0.5&&dist>stop)?1:0,
+          turn:Math.max(-1,Math.min(1,diff*3)),
+          done:dist<=stop};
+}
+function autoGrabBall(){
+  wristG.attach(ball);ball.position.copy(GRIP_PT);ball.rotation.set(0,0,0);
+  held=ball;gripOpen=false;
+  document.getElementById('rGrip').textContent='잡는 중';
+}
+function autoRelease(){
+  scene.attach(held);
+  held.userData.vy=0;held.userData.vx=0;held.userData.vz=0;
+  held=null;gripOpen=true;
+  document.getElementById('rGrip').textContent='열림';
+}
+function autoStep(dt){ /* Mk.3 '계획 없음' 실패 연출 */
   auto.phaseT+=dt;
-  var rx=robot.position.x,rz=robot.position.z;
-  function driveTo(p,stop){
-    var dx=p.x-rx,dz=p.z-rz;
-    var dist=Math.hypot(dx,dz);
-    var des=Math.atan2(-dz,dx);
-    var diff=angNorm(des-robot.rotation.y);
-    return {fwd:(Math.abs(diff)<0.5&&dist>stop)?1:0,
-            turn:Math.max(-1,Math.min(1,diff*3)),
-            done:dist<=stop};
-  }
   var ctl={fwd:0,turn:0};
-  if(auto.mode==='fail'){
-    if(auto.phase===0){
-      var r0=driveTo({x:-1.5,z:6},0.6);ctl=r0;
-      if(r0.done||auto.phaseT>3.5){auto.phase=1;auto.phaseT=0;showToast('🤖 …재료가 어디지?');}
-    }else if(auto.phase===1){
-      ctl={fwd:0,turn:1};
-      targetL.set(1.2+Math.sin(auto.phaseT*3)*0.6,1.2,Math.cos(auto.phaseT*2.3)*0.8);
-      if(auto.phaseT>2.6){auto.phase=2;auto.phaseT=0;showToast('🤖 …뭘 해야 하더라?');}
-    }else if(auto.phase===2){
-      if(auto.phaseT>1.4){stopAuto();missionEvent('autofail');}
+  if(auto.phase===0){
+    var r0=driveTo({x:-1.5,z:6},0.6);ctl=r0;
+    if(r0.done||auto.phaseT>3.5){auto.phase=1;auto.phaseT=0;showToast('🤖 …재료가 어디지?');}
+  }else if(auto.phase===1){
+    ctl={fwd:0,turn:1};
+    targetL.set(1.2+Math.sin(auto.phaseT*3)*0.6,1.2,Math.cos(auto.phaseT*2.3)*0.8);
+    if(auto.phaseT>2.6){auto.phase=2;auto.phaseT=0;showToast('🤖 …뭘 해야 하더라?');}
+  }else if(auto.phase===2){
+    if(auto.phaseT>1.4){stopAuto();missionEvent('autofail');}
+  }
+  return ctl;
+}
+
+/* ── 블록 계획 실행 엔진: System 1은 계획을 '그대로' 수행한다 ── */
+function planFail(msg){
+  var M=mission.active?MISSIONS[mission.idx]:null;
+  stopAuto();
+  showToast(msg);
+  if(M&&M.blocks==='user')setTimeout(function(){if(mission.active)openBlockPanel(true);},900);
+}
+function planStep(dt){
+  var id=auto.plan[auto.step];
+  var ctl={fwd:0,turn:0};
+  if(!id){
+    stopAuto();
+    if(mission.active){
+      showToast('🧠 계획이 끝났는데 목표 미달성 — 빠진 단계가 있나요?');
+      var M=MISSIONS[mission.idx];
+      if(M.blocks==='user')setTimeout(function(){if(mission.active)openBlockPanel(true);},900);
     }
     return ctl;
   }
-  if(auto.phase===0){
+  auto.phaseT+=dt;
+  function next(){auto.step++;auto.phaseT=0;}
+  if(id==='goMat'){
     targetL.set(1.6,1.0,0);
     var r=driveTo(MAT_PAD,1.5);ctl=r;
-    if(r.done){auto.phase=1;auto.phaseT=0;showToast('🤖 재료 발견 — 집습니다');}
-  }else if(auto.phase===1){
-    var bl=armW2L(ball.position);
-    bl.y+=0.02;
-    targetL.copy(clampTargetL(bl));
-    if(!held&&getEEWorld().distanceTo(ball.position)<GRAB_RANGE-0.05){
-      wristG.attach(ball);ball.position.copy(GRIP_PT);ball.rotation.set(0,0,0);
-      held=ball;gripOpen=false;
-      document.getElementById('rGrip').textContent='잡는 중';
-      auto.phase=2;auto.phaseT=0;showToast('🤖 공장으로 이동');
+    if(r.done)next();
+    else if(auto.phaseT>12)planFail('🚗 이동 시간 초과 — 계획을 다시 짜보세요');
+  }else if(id==='grab'){
+    if(held===ball){next();}
+    else{
+      var bl=armW2L(ball.position);bl.y+=0.02;
+      targetL.copy(clampTargetL(bl));
+      if(!held&&getEEWorld().distanceTo(ball.position)<ERAS[era].grab-0.05){autoGrabBall();next();}
+      else if(auto.phaseT>5)planFail('✋ 집기 실패 — 공이 손 닿는 곳에 없어요. 블록 순서를 확인!');
     }
-    if(auto.phaseT>7){auto.phase=0;auto.phaseT=0;}
-  }else if(auto.phase===2){
+  }else if(id==='goHopper'){
     targetL.set(1.6,1.4,0);
     var r2=driveTo(HOPPER_APPROACH,0.5);ctl=r2;
-    if(r2.done){auto.phase=3;auto.phaseT=0;}
-  }else if(auto.phase===3){
-    targetL.copy(clampTargetL(armW2L(INPUT_W)));
-    if(held&&getEEWorld().distanceTo(INPUT_W)<0.34){
-      scene.attach(held);held.userData.vy=0;held=null;gripOpen=true;
-      document.getElementById('rGrip').textContent='열림';
-      facIntake();
-      auto.phase=4;auto.phaseT=0;
+    if(r2.done)next();
+    else if(auto.phaseT>12)planFail('🚗 이동 시간 초과 — 계획을 다시 짜보세요');
+  }else if(id==='drop'){
+    if(held!==ball){
+      planFail('📥 넣기 실패 — 들고 있는 게 없어요. 블록 순서를 확인!');
+    }else{
+      targetL.copy(clampTargetL(armW2L(INPUT_W)));
+      if(getEEWorld().distanceTo(INPUT_W)<0.34){autoRelease();facIntake();next();}
+      else if(auto.phaseT>8)planFail('📥 투입 실패 — 계획을 다시 짜보세요');
     }
-    if(auto.phaseT>8){auto.phase=2;auto.phaseT=0;}
-  }
-  /* phase 4: 생산 대기 — produce 이벤트가 미션을 끝냄 */
+  }else next();
   return ctl;
 }
 
@@ -1857,12 +2028,89 @@ function layoutTopUI(){
 layoutTopUI();
 window.addEventListener('resize',layoutTopUI);
 
+/* ════════════════ 블록 계획 패널 (미니게임 ③) ════════════════ */
+var BLOCKS=[
+ {id:'goMat',icon:'🚗',label:'재료 패드로 이동'},
+ {id:'grab',icon:'✋',label:'공 집기'},
+ {id:'goHopper',icon:'🏭',label:'투입구로 이동'},
+ {id:'drop',icon:'📥',label:'투입구에 넣기'}
+];
+var bpSeq=[],bpEditable=true;
+var blockPanel=document.getElementById('blockPanel');
+function openBlockPanel(editable){
+  bpEditable=editable!==false;
+  bpSeq=[];
+  renderBP();
+  blockPanel.classList.add('show');
+}
+function closeBlockPanel(){blockPanel.classList.remove('show');}
+function renderBP(){
+  var av=document.getElementById('bpAvail');
+  av.innerHTML='';
+  BLOCKS.forEach(function(b){
+    var btn=document.createElement('button');
+    btn.className='bp-block';
+    btn.textContent=b.icon+' '+b.label;
+    btn.disabled=!bpEditable;
+    btn.onclick=function(){bpSeq.push(b.id);renderBP();};
+    av.appendChild(btn);
+  });
+  var sq=document.getElementById('bpSeq');
+  sq.innerHTML='';
+  if(!bpSeq.length){
+    var ph=document.createElement('span');
+    ph.className='bp-empty';
+    ph.textContent='↑ 블록을 눌러 순서대로 추가하세요';
+    sq.appendChild(ph);
+  }
+  bpSeq.forEach(function(id,i){
+    var b=null;
+    for(var k=0;k<BLOCKS.length;k++)if(BLOCKS[k].id===id)b=BLOCKS[k];
+    var chip=document.createElement('button');
+    chip.className='bp-chip';
+    chip.textContent=(i+1)+'. '+b.icon+' '+b.label+(bpEditable?' ✕':'');
+    chip.onclick=function(){if(!bpEditable)return;bpSeq.splice(i,1);renderBP();};
+    sq.appendChild(chip);
+  });
+  document.getElementById('bpRun').disabled=!bpEditable||!bpSeq.length;
+}
+document.getElementById('bpRun').addEventListener('click',function(){
+  if(!bpSeq.length||!bpEditable)return;
+  closeBlockPanel();
+  auto.plan=bpSeq.slice();
+  startAuto('plan');
+  showToast('🤖 계획 전송 — System 1이 그대로 실행합니다');
+});
+document.getElementById('bpClear').addEventListener('click',function(){
+  if(!bpEditable)return;
+  bpSeq=[];renderBP();
+});
+function autoFillBlocks(){
+  openBlockPanel(false);
+  var seq=['goMat','grab','goHopper','drop'],fi=0;
+  showToast('🧠 System 2가 스스로 계획을 세우는 중…');
+  var iv=setInterval(function(){
+    if(!mission.active){clearInterval(iv);closeBlockPanel();return;}
+    bpSeq.push(seq[fi++]);renderBP();
+    if(fi>=seq.length){
+      clearInterval(iv);
+      setTimeout(function(){
+        if(!mission.active)return;
+        closeBlockPanel();
+        auto.plan=seq.slice();
+        startAuto('plan');
+        showToast('🤖 스스로 세운 계획을 실행합니다');
+      },800);
+    }
+  },650);
+}
+
 function startMission(i){
   mission.idx=i;mission.active=true;mission.startT=simT;
   mission.drops=0;mission.errSum=0;mission.errT=0;
   var M=MISSIONS[i];
   /* 배너를 먼저 띄우고 위치를 잡아야, 이어지는 토스트(setEra 팁)가 배너 아래로 배치됨 */
-  mbTitle.textContent='MISSION '+M.no+'/'+MISSIONS.length+' · '+ERAS[M.era].gen+(M.auto?' · 🤖 자율':'');
+  mbTitle.textContent='MISSION '+M.no+'/'+MISSIONS.length+' · '+ERAS[M.era].gen+(M.auto?' · 🤖 자율':(M.blocks?' · 🧩 계획':''));
   mbGoal.textContent=M.goal;
   mbTimer.textContent='';
   document.getElementById('mbGiveup').style.display=M.wall?'inline-block':'none';
@@ -1882,13 +2130,23 @@ function startMission(i){
       }
     },1200);
   }
+  if(M.blocks==='user'){
+    setTimeout(function(){if(mission.active&&mission.idx===i)openBlockPanel(true);},800);
+  }else if(M.blocks==='auto'){
+    setTimeout(function(){if(mission.active&&mission.idx===i)autoFillBlocks();},800);
+  }else{
+    closeBlockPanel();
+  }
   closeModal();
 }
 function missionDrop(){if(mission.active)mission.drops++;}
 function missionEvent(type){
   if(!mission.active)return;
   var M=MISSIONS[mission.idx];
-  if(M.type!==type)return;
+  if(M.type!==type){
+    showToast('💡 좋아요! 그런데 지금 미션 목표는 — '+M.goal);
+    return;
+  }
   completeMission(simT-mission.startT,false);
 }
 function wallHit(){
@@ -1898,6 +2156,7 @@ function wallHit(){
 function completeMission(el,failed){
   mission.active=false;
   stopAuto();
+  closeBlockPanel();
   cloud.active=false;
   mBanner.classList.remove('show');
   var M=MISSIONS[mission.idx];
@@ -2001,7 +2260,7 @@ function showFinish(){
 function closeModal(){mModal.classList.remove('open');}
 function exitMissions(){
   mission.active=false;mBanner.classList.remove('show');
-  stopAuto();cloud.active=false;
+  stopAuto();closeBlockPanel();cloud.active=false;
   showToast('자유 탐색 모드 — 메뉴에서 언제든 미션을 다시 시작할 수 있습니다');
 }
 document.getElementById('mbGiveup').addEventListener('click',wallHit);
@@ -2049,7 +2308,7 @@ var OB=[
     '<p><b>주행</b> — W/S 앞뒤, A/D 회전<br><b>팔</b> — 방향키 + Q/E(높이)<br><b>집기/놓기</b> — 공이 반짝일 때 Space<br><b>카메라</b> — 마우스 드래그·휠</p>'+
     '<p style="color:var(--mut);font-size:13px">잊어버려도 괜찮아요. 화면 오른쪽 아래에 항상 떠 있습니다.</p>'),
  '<div class="mm-eyebrow">진행 방식</div><h3>벽에 부딪히는 게 목표예요</h3>'+
- '<p>미션 9개를 순서대로 깹니다. 그중 몇 개는 <b>지금 로봇으로는 절대 안 되는 미션</b>이에요. '+
+ '<p>미션 10개를 순서대로 깹니다. 그중 몇 개는 <b>지금 로봇으로는 절대 안 되는 미션</b>이에요. '+
  '그 벽에 부딪히는 순간이 — 새 기술이 <b>왜</b> 태어났는지를 이해하는 순간입니다. '+
  '벽을 발견할 때마다 다음 세대 기체가 열리고, 같은 일을 다시 해보며 차이를 확인합니다.</p>'
 ];
@@ -2106,6 +2365,7 @@ setEra(0);
 var smoothErr=0,errTick=0;
 var prevEE=new THREE.Vector3(),eeVel=new THREE.Vector3(),eeSpeed=0;
 var trackLock=false;
+var lastDeflT=-9;
 
 function animate(){
   requestAnimationFrame(animate);
@@ -2120,7 +2380,7 @@ function animate(){
   if(frozen||zoneSt==='eject'){
     /* 통신 두절/안전모드 — 수동·자율 제어 모두 정지 */
   }else if(auto.on){
-    var actl=autoStep(dt);
+    var actl=(auto.mode==='plan')?planStep(dt):autoStep(dt);
     fwd=actl.fwd;turn=actl.turn;
   }else{
     if(keys['KeyW'])fwd+=1;
@@ -2143,6 +2403,7 @@ function animate(){
     robot.position.x=FACTORY_C.x+toFac.x;
     robot.position.z=FACTORY_C.z+toFac.y;
   }
+  resolveColliders();
   var rolled=fwd*SPD*dt/0.19;
   for(var w=0;w<wheels.length;w++)wheels[w].rotation.y-=rolled;
 
@@ -2218,17 +2479,52 @@ function animate(){
   var fy=held?((held===ball?BALL_R:PROD_S/2)+0.028):(gripOpen?FINGER_OPEN:FINGER_CLOSED);
   fingerT.position.y+=(fy-fingerT.position.y)*0.35;
   fingerB.position.y+=(-fy-fingerB.position.y)*0.35;
-  ball.userData.floorY=supportHeightAt(ball.position.x,ball.position.z)+BALL_R;
+  /* ── 공 전용 물리: 수평 속도·공장 튕김·바운스·마찰 ── */
+  if(ball.visible&&held!==ball&&!(simT<ballSocketUntil)&&!(simT<ballCartUntil)&&!(simT<ballDlvUntil)){
+    var bu=ball.userData;
+    ball.position.x+=(bu.vx||0)*dt;
+    ball.position.z+=(bu.vz||0)*dt;
+    ball.position.x=Math.max(-9.6,Math.min(9.6,ball.position.x));
+    ball.position.z=Math.max(-9.6,Math.min(9.6,ball.position.z));
+    var fy2=supportHeightAt(ball.position.x,ball.position.z)+BALL_R;
+    var defl=supportDeflect;
+    bu.floorY=fy2;
+    function deflectOut(){
+      var ddx=ball.position.x-FACTORY_C.x,ddz=ball.position.z-FACTORY_C.z;
+      var dl=Math.hypot(ddx,ddz)||1;
+      bu.vx=ddx/dl*2.5;bu.vz=ddz/dl*2.5;bu.vy=2.6;
+      if(simT-lastDeflT>1.5){showToast('🏭 공장 설비에 맞고 튕겨나왔어요');lastDeflT=simT;}
+    }
+    if(ball.position.y>fy2+0.001){
+      bu.vy-=9.8*dt;
+      ball.position.y+=bu.vy*dt;
+      if(ball.position.y<=fy2){
+        ball.position.y=fy2;
+        if(defl){deflectOut();}
+        else if(bu.vy<-2.2){
+          bu.vy=-bu.vy*0.35;
+          bu.vx=(bu.vx||0)*0.6;bu.vz=(bu.vz||0)*0.6;
+        }else{bu.vy=0;}
+      }
+    }else{
+      if(defl){ball.position.y=fy2+0.02;deflectOut();}
+      else{
+        var fr=Math.pow(0.02,dt);
+        bu.vx=(bu.vx||0)*fr;bu.vz=(bu.vz||0)*fr;
+        if(Math.abs(bu.vx)<0.05)bu.vx=0;
+        if(Math.abs(bu.vz)<0.05)bu.vz=0;
+      }
+    }
+  }
   ballBeam.visible=ball.visible&&held!==ball;
   if(ballBeam.visible){
     ballBeam.position.set(ball.position.x,ball.position.y+1.15,ball.position.z);
     ballBeam.material.opacity=0.14+0.1*(1+Math.sin(simT*3))/2;
   }
-  var objs=[ball].concat(products);
+  var objs=products;
   for(var o=0;o<objs.length;o++){
     var ob=objs[o];
     if(ob===held||!ob.visible)continue;
-    if(ob===ball&&(simT<ballSocketUntil||simT<ballCartUntil||simT<ballDlvUntil))continue;
     if(ob.userData.slide!==undefined&&ob.userData.slide<1)continue;
     if(ob.position.y>ob.userData.floorY+0.001){
       ob.userData.vy-=9.8*dt;
@@ -2236,6 +2532,22 @@ function animate(){
       if(ob.position.y<=ob.userData.floorY){ob.position.y=ob.userData.floorY;ob.userData.vy=0;}
     }
   }
+  /* 체적 판정: 자유 낙하/안착 중인 공이 목표 공간에 들어오면 성공 처리 */
+  if(ball.visible&&held!==ball&&ballSocketUntil===0&&ballCartUntil===0&&ballDlvUntil===0){
+    var bp=ball.position;
+    if(fac.state==='idle'
+       &&Math.hypot(bp.x-INPUT_W.x,bp.z-INPUT_W.z)<0.34&&bp.y>0.55&&bp.y<1.5){
+      facIntake();
+    }else if(!ball.userData.thrown&&ball.userData.vy<-0.05
+       &&bp.y>0.55&&bp.y<1.2
+       &&Math.hypot(bp.x-SOCKET_W.x,bp.z-SOCKET_W.z)<sockR){
+      socketSuccess();
+    }else if(!ball.userData.thrown&&ball.userData.vy<-0.05&&bp.y<0.85
+       &&Math.hypot(bp.x-DELIVER_W.x,bp.z-DELIVER_W.z)<0.35){
+      deliverSuccess();
+    }
+  }
+
   ballMat.emissiveIntensity+=(((near===ball)?0.55+0.25*Math.sin(simT*8):0)-ballMat.emissiveIntensity)*0.2;
   for(var p2=0;p2<products.length;p2++){
     var pm=products[p2].material;
@@ -2270,6 +2582,11 @@ function animate(){
   trailGeo.attributes.position.needsUpdate=true;
   trailGeo.setDrawRange(0,trailLen);
 
+  gripDropPos[0]=eeW.x;gripDropPos[1]=eeW.y;gripDropPos[2]=eeW.z;
+  gripDropPos[3]=eeW.x;gripDropPos[4]=0.02;gripDropPos[5]=eeW.z;
+  gripDropGeo.attributes.position.needsUpdate=true;
+  gripShadow.position.set(eeW.x,0.015,eeW.z);
+
   /* 소켓 연출 */
   sockFlash=Math.max(0,sockFlash-dt*1.5);
   sockRingMat.color.setHex(sockFlash>0?0x7BD88F:0xB392F9);
@@ -2283,12 +2600,15 @@ function animate(){
     if(simT<ballDlvUntil){ball.position.set(DELIVER_W.x,0.13,DELIVER_W.z);ball.userData.vy=0;}
     else{ballDlvUntil=0;spawnMaterial();}
   }
-  if(!held&&ball.visible&&ballDlvUntil===0&&ballCartUntil===0&&ballSocketUntil===0&&era!==4
-     &&Math.hypot(ball.position.x-ZONE_C.x,ball.position.z-ZONE_C.z)<ZONE_R){
+  var bStuckZone=era!==4&&Math.hypot(ball.position.x-ZONE_C.x,ball.position.z-ZONE_C.z)<ZONE_R;
+  var bStuckHigh=ball.userData.floorY>1.2;
+  if(!held&&ball.visible&&ballDlvUntil===0&&ballCartUntil===0&&ballSocketUntil===0
+     &&(bStuckZone||bStuckHigh)){
     ballZoneT+=dt;
-    if(ballZoneT>3){ballZoneT=0;spawnMaterial();showToast('🛸 회수 드론이 음영 구역의 재료를 회수했어요');}
+    if(ballZoneT>3){ballZoneT=0;spawnMaterial();showToast('🛸 회수 드론이 재료를 회수해 패드로 옮겼어요');}
   }else ballZoneT=0;
 
+  updateObjectiveMarker();
   if(mission.active){
     var mel=simT-mission.startT;
     var MM=MISSIONS[mission.idx];
@@ -2323,7 +2643,7 @@ function animate(){
     errEl.className='v '+(smoothErr>0.35?'lat':(smoothErr>0.15?'hi':'ok'));
   }
 
-  cam.target.lerp(new THREE.Vector3(robot.position.x,1.0,robot.position.z),0.06);
+  cam.target.lerp(new THREE.Vector3((robot.position.x+eeW.x)/2,1.0,(robot.position.z+eeW.z)/2),0.06);
   updateOrbit();
 
   renderer.render(scene,camera);
