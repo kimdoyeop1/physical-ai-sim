@@ -1,0 +1,2792 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Physical AI 3D Factory — 모바일 로봇 자동화 공장</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#10141B; --panel:#171D27; --line:#27303F;
+  --ink:#E9EDF4; --mut:#92A0B5;
+  --vis:#53D7E0; --lang:#B392F9; --act:#FFB454; --good:#7BD88F; --bad:#FF5D5D;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+  --sans:'IBM Plex Sans KR',-apple-system,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans)}
+#scene{position:fixed;inset:0;display:block;cursor:grab}
+#scene:active{cursor:grabbing}
+
+/* ── 상단 바 ── */
+.topbar{
+  position:fixed;top:0;left:0;right:0;z-index:10;
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:12px 16px;background:rgba(16,20,27,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+}
+.topbar .title{font-family:var(--mono);font-size:12px;color:var(--mut);margin-right:auto}
+.topbar .title b{color:var(--ink);font-weight:600}
+.era-btn,.menu-btn{
+  font-family:var(--mono);font-size:12px;color:var(--mut);background:transparent;
+  border:1px solid var(--line);border-radius:999px;padding:6px 13px;cursor:pointer;
+  transition:all .15s ease;
+}
+.era-btn:hover,.menu-btn:hover{color:var(--ink);border-color:var(--mut)}
+.era-btn.on{color:#10141B;background:var(--act);border-color:var(--act);font-weight:600}
+.menu-btn{border-color:rgba(179,146,249,.5);color:var(--lang)}
+
+/* ── 메뉴 드롭다운 ── */
+.menu-pop{
+  position:fixed;top:54px;left:16px;z-index:30;min-width:210px;display:none;
+  background:rgba(23,29,39,.97);backdrop-filter:blur(10px);
+  border:1px solid var(--line);border-radius:12px;overflow:hidden;
+}
+.menu-pop.open{display:block}
+.menu-pop button{
+  display:block;width:100%;text-align:left;background:transparent;border:none;
+  font-family:var(--sans);font-size:14px;color:var(--ink);padding:12px 16px;cursor:pointer;
+  border-bottom:1px solid var(--line);
+}
+.menu-pop button:last-child{border-bottom:none}
+.menu-pop button:hover{background:rgba(255,255,255,.05)}
+.menu-pop button .k{font-family:var(--mono);font-size:11px;color:var(--mut);float:right;margin-top:2px}
+
+/* ── 발전사 메뉴얼 ── */
+.manual{
+  position:fixed;inset:0;z-index:40;display:none;overflow-y:auto;
+  background:rgba(13,17,23,.97);backdrop-filter:blur(8px);
+}
+.manual.open{display:block}
+.manual .inner{max-width:820px;margin:0 auto;padding:64px 24px 90px}
+.manual .close{
+  position:fixed;top:18px;right:22px;z-index:41;
+  font-family:var(--mono);font-size:13px;color:var(--mut);background:rgba(23,29,39,.9);
+  border:1px solid var(--line);border-radius:999px;padding:8px 16px;cursor:pointer;
+}
+.manual .close:hover{color:var(--ink);border-color:var(--mut)}
+.manual .eyebrow{
+  font-family:var(--mono);font-size:12px;letter-spacing:.14em;color:var(--mut);
+  text-transform:uppercase;margin-bottom:12px;
+}
+.manual h1{font-size:clamp(24px,3.6vw,34px);font-weight:700;letter-spacing:-.02em;line-height:1.3;margin-bottom:12px}
+.manual h1 .v{color:var(--vis)} .manual h1 .l{color:var(--lang)} .manual h1 .a{color:var(--act)}
+.manual .lede{color:var(--mut);font-size:15px;line-height:1.8;margin-bottom:26px}
+.manual .lede b{color:var(--ink)}
+.stage{
+  border:1px solid var(--line);border-radius:14px;background:var(--panel);
+  padding:22px 24px;margin-bottom:18px;
+}
+.stage .st-top{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:4px}
+.stage .st-no{font-family:var(--mono);font-size:12px;color:var(--act);letter-spacing:.12em}
+.stage .st-period{font-family:var(--mono);font-size:11.5px;color:var(--mut)}
+.stage h2{font-size:19px;font-weight:700;letter-spacing:-.01em;margin-bottom:10px}
+.stage p{font-size:14px;color:#C4CDDA;line-height:1.8;margin-bottom:10px}
+.stage p b{color:var(--ink)}
+.stage .papers{font-size:13px;color:var(--mut);line-height:1.9;margin-bottom:12px}
+.stage .papers b{color:var(--ink);font-weight:600}
+.stage .papers a{color:var(--vis);text-decoration:none;font-family:var(--mono);font-size:11.5px}
+.stage .papers a:hover{text-decoration:underline}
+.stage .try{
+  border-left:2px solid var(--act);padding:8px 0 8px 14px;
+  font-size:13.5px;color:#C4CDDA;line-height:1.7;background:rgba(255,180,84,.04);
+  border-radius:0 8px 8px 0;
+}
+.stage .try b{color:var(--act);font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;display:block;margin-bottom:3px}
+.manual .src{
+  font-family:var(--mono);font-size:11.5px;color:var(--mut);line-height:2;margin-top:30px;
+  border-top:1px solid var(--line);padding-top:18px;
+}
+.manual .src a{color:var(--vis);text-decoration:none}
+
+/* 메뉴얼 내 데모 패널 */
+.mviz{
+  border:1px solid var(--line);border-radius:12px;background:#141923;
+  overflow:hidden;margin:14px 0;
+}
+.mviz-cap{
+  font-family:var(--mono);font-size:11.5px;color:var(--mut);
+  padding:10px 14px;border-bottom:1px solid var(--line);
+}
+.mviz-cap b{color:var(--ink);font-weight:500}
+.mviz canvas{display:block;width:100%}
+.mviz-note{font-size:12.5px;color:var(--mut);padding:10px 14px;border-top:1px solid var(--line);line-height:1.7}
+
+/* 메뉴얼 히어로 데모 (2D 로봇 팔) */
+.mlab{
+  margin:0 0 30px;border:1px solid var(--line);border-radius:14px;
+  background:linear-gradient(180deg,var(--panel) 0%,#141923 100%);overflow:hidden;
+}
+.mlab-head{
+  display:flex;flex-wrap:wrap;gap:8px;padding:13px 15px;border-bottom:1px solid var(--line);
+  align-items:center;
+}
+.mlab-head .t{font-family:var(--mono);font-size:11.5px;color:var(--mut);margin-right:auto}
+.mera-btn{
+  font-family:var(--mono);font-size:11.5px;color:var(--mut);background:transparent;
+  border:1px solid var(--line);border-radius:999px;padding:5px 12px;cursor:pointer;
+  transition:all .15s ease;
+}
+.mera-btn:hover{color:var(--ink);border-color:var(--mut)}
+.mera-btn.on{color:#10141B;background:var(--act);border-color:var(--act);font-weight:600}
+#mArmCanvas{display:block;width:100%;height:300px}
+.mlab-read{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line)}
+.mlab-read>div{padding:11px 14px;border-right:1px solid var(--line)}
+.mlab-read>div:last-child{border-right:none}
+.mlab-read .k{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--mut);text-transform:uppercase}
+.mlab-read .v{font-size:13px;font-weight:600;margin-top:2px}
+.mlab-read .v.hi{color:var(--act)}
+@media(max-width:680px){.mlab-read{grid-template-columns:repeat(2,1fr)} .mlab-read>div:nth-child(2){border-right:none}}
+
+/* 듀얼 시스템 SVG */
+.dual{display:flex;justify-content:center;padding:22px 0;background:#141923}
+@keyframes spinO{to{transform:rotate(360deg)}}
+.orb-slow{transform-origin:170px 150px;animation:spinO 6s linear infinite}
+.orb-fast{transform-origin:430px 150px;animation:spinO .8s linear infinite}
+
+/* 엣지 3종 */
+.edge3{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin:14px 0}
+.edge3 .cell{border:1px solid var(--line);border-radius:10px;background:#141923;overflow:hidden}
+.edge3 canvas{display:block;width:100%}
+.edge3 .mviz-note{border-top:1px solid var(--line)}
+.edge3 .mviz-cap{border-bottom:1px solid var(--line)}
+
+/* ── 좌하단: 리드아웃 ── */
+.readout{
+  position:fixed;left:16px;bottom:16px;z-index:10;width:min(300px,calc(100vw - 32px));
+  background:rgba(23,29,39,.88);backdrop-filter:blur(10px);
+  border:1px solid var(--line);border-radius:12px;overflow:hidden;
+}
+.readout .hd{
+  font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--mut);
+  text-transform:uppercase;padding:10px 14px;border-bottom:1px solid var(--line);
+}
+.readout .row{display:flex;justify-content:space-between;gap:10px;padding:6px 14px;font-size:13px}
+.readout .row:first-of-type{padding-top:11px}
+.readout .row:last-of-type{padding-bottom:12px}
+.readout .k{color:var(--mut)}
+.readout .v{font-weight:600;text-align:right}
+.readout .v.hi{color:var(--act)}
+.readout .v.lat{color:var(--bad)}
+.readout .v.ok{color:var(--good)}
+.readout .v.fac{color:#E8B4F8}
+.readout .ghost-note{
+  font-family:var(--mono);font-size:10.5px;color:var(--bad);
+  padding:0 14px 11px;display:none;
+}
+
+/* ── 우하단: 조작법 ── */
+.help{
+  position:fixed;right:16px;bottom:16px;z-index:10;
+  background:rgba(23,29,39,.88);backdrop-filter:blur(10px);
+  border:1px solid var(--line);border-radius:12px;padding:12px 16px;
+  font-family:var(--mono);font-size:11.5px;color:var(--mut);line-height:2;
+}
+.help.hidden{display:none}
+.help b{color:var(--ink);font-weight:500}
+.help kbd{
+  display:inline-block;min-width:20px;text-align:center;padding:0 5px;
+  border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;
+  color:var(--act);font-family:var(--mono);font-size:11px;margin-right:2px;
+}
+.help .goal{color:#E8B4F8;border-top:1px solid var(--line);margin-top:6px;padding-top:6px}
+.help .toggle{display:none}
+@media(max-width:760px){
+  .help .full{display:none}
+  .help .toggle{display:block}
+  .readout{width:min(270px,calc(100vw - 32px))}
+}
+
+/* ── 터치 컨트롤 (모바일) ── */
+.touch-ui{display:none;position:fixed;inset:0;z-index:12;pointer-events:none}
+body.touch .touch-ui{display:block}
+.joy{
+  position:absolute;bottom:18px;width:122px;height:122px;border-radius:50%;
+  border:1.5px solid var(--line);background:rgba(23,29,39,.55);backdrop-filter:blur(6px);
+  pointer-events:auto;touch-action:none;
+}
+#joyL{left:16px}
+#joyR{right:104px}
+.joy .knob{
+  position:absolute;left:50%;top:50%;width:50px;height:50px;border-radius:50%;
+  background:rgba(255,180,84,.88);transform:translate(-50%,-50%);
+}
+.joy-label{
+  position:absolute;top:-20px;width:100%;text-align:center;
+  font-family:var(--mono);font-size:10px;color:var(--mut);
+}
+.tbtns{
+  position:absolute;right:16px;bottom:18px;display:flex;flex-direction:column;gap:9px;
+  pointer-events:auto;
+}
+.tbtns button{
+  width:62px;height:50px;border-radius:14px;border:1.5px solid var(--line);
+  background:rgba(23,29,39,.72);color:var(--ink);font-size:19px;touch-action:none;
+}
+#btnGrab{height:62px;background:rgba(255,180,84,.92);border-color:var(--act);color:#10141B;font-size:24px}
+body.touch .help{display:none}
+body.touch .readout{bottom:160px;width:198px}
+body.touch .readout .row{padding:3px 12px;font-size:11.5px}
+body.touch .readout .hd{padding:7px 12px;font-size:9.5px}
+body.touch .readout .ghost-note{font-size:9.5px;padding:0 12px 8px}
+@media(max-width:560px){
+  .topbar .title{display:none}
+  .era-btn,.menu-btn{padding:5px 9px;font-size:10.5px}
+}
+
+/* ── 토스트 ── */
+.toast{
+  position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:11;
+  font-family:var(--mono);font-size:12px;color:var(--good);
+  background:rgba(23,29,39,.9);border:1px solid var(--line);border-radius:999px;
+  padding:6px 16px;opacity:0;transition:opacity .25s;pointer-events:none;
+  max-width:calc(100vw - 40px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.toast.show{opacity:1}
+
+/* ── 미션 배너 ── */
+.mission-banner{
+  position:fixed;top:58px;left:50%;transform:translateX(-50%);z-index:9;
+  width:min(560px,calc(100vw - 32px));
+  background:rgba(23,29,39,.92);backdrop-filter:blur(10px);
+  border:1px solid rgba(255,180,84,.45);border-radius:12px;
+  padding:11px 16px;display:none;
+}
+.mission-banner.show{display:block}
+.mb-title{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;color:var(--act);margin-bottom:2px}
+.mb-goal{font-size:14px;font-weight:600;color:var(--ink)}
+.mb-meta{display:flex;justify-content:space-between;align-items:center;margin-top:5px}
+.mb-meta .tm{font-family:var(--mono);font-size:12px;color:var(--mut)}
+.mb-meta .tm.over{color:var(--bad)}
+.mb-meta button{
+  font-family:var(--mono);font-size:11px;color:var(--mut);background:transparent;
+  border:1px solid var(--line);border-radius:999px;padding:3px 10px;cursor:pointer;
+}
+.mb-meta button:hover{color:var(--ink)}
+
+/* ── 미션 모달 / 온보딩 ── */
+.mmodal{
+  position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;
+  background:rgba(10,13,18,.75);backdrop-filter:blur(6px);padding:20px;
+}
+.mmodal.open{display:flex}
+.mm-card{
+  width:min(520px,100%);max-height:86vh;overflow-y:auto;
+  background:var(--panel);border:1px solid var(--line);border-radius:16px;
+  padding:26px 28px;
+}
+.mm-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--act);text-transform:uppercase;margin-bottom:8px}
+.mm-card h3{font-size:20px;font-weight:700;letter-spacing:-.01em;margin-bottom:12px}
+.mm-card p{font-size:14px;color:#C4CDDA;line-height:1.8;margin-bottom:12px}
+.mm-card p b{color:var(--ink)}
+.mm-stats{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin:14px 0;
+}
+.mm-fig{
+  border:1px solid var(--line);border-radius:10px;background:#141923;
+  padding:10px 12px 6px;margin:12px 0;
+}
+.mm-fig svg{display:block;width:100%;height:auto}
+.mm-fig .cap{font-family:var(--mono);font-size:10.5px;color:var(--mut);padding:4px 2px 6px}
+.mm-stat{border:1px solid var(--line);border-radius:10px;padding:10px 14px;background:#141923}
+.mm-stat .k{font-family:var(--mono);font-size:10.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.08em}
+.mm-stat .v{font-size:19px;font-weight:700;color:var(--act);margin-top:2px}
+.mm-stat .v.win{color:var(--good)}
+.mm-compare{
+  border:1px solid rgba(123,216,143,.4);border-radius:10px;padding:12px 14px;
+  background:rgba(123,216,143,.05);margin:14px 0;font-size:13.5px;color:#C4CDDA;line-height:1.7;
+}
+.mm-compare b{color:var(--good)}
+.mm-quiz{border-top:1px solid var(--line);margin-top:16px;padding-top:16px}
+.mm-quiz .q{font-size:14.5px;font-weight:600;margin-bottom:10px}
+.mm-quiz .opt{
+  display:block;width:100%;text-align:left;font-family:var(--sans);font-size:13.5px;
+  color:#C4CDDA;background:#141923;border:1px solid var(--line);border-radius:10px;
+  padding:10px 14px;margin-bottom:8px;cursor:pointer;
+}
+.mm-quiz .opt:hover{border-color:var(--mut)}
+.mm-quiz .opt.right{border-color:var(--good);color:var(--good)}
+.mm-quiz .opt.wrong{border-color:var(--bad);color:var(--bad)}
+.mm-quiz .expl{font-size:13px;color:var(--mut);line-height:1.7;margin-top:8px;display:none}
+.mm-quiz .expl.show{display:block}
+.mm-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
+.mm-actions button{
+  font-family:var(--sans);font-size:14px;font-weight:600;border-radius:999px;
+  padding:9px 20px;cursor:pointer;border:1px solid var(--line);
+  background:transparent;color:var(--mut);
+}
+.mm-actions button.primary{background:var(--act);border-color:var(--act);color:#10141B}
+.mm-actions button.primary:disabled{opacity:.35;cursor:not-allowed}
+.mm-actions button:hover:not(:disabled){filter:brightness(1.1)}
+.mm-records{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+.mm-records th,.mm-records td{border:1px solid var(--line);padding:7px 10px;text-align:left}
+.mm-records th{font-family:var(--mono);font-size:10.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em}
+.mm-records td b{color:var(--act)}
+
+/* ── 메뉴얼 단계 잠금 ── */
+.stage.locked > :not(.st-top):not(h2):not(.lock-note){display:none}
+.stage.locked{opacity:.75}
+.stage .lock-note{display:none}
+.stage.locked .lock-note{display:block}
+.lock-note{
+  font-family:var(--mono);font-size:12px;color:var(--mut);
+  border:1px dashed var(--line);border-radius:8px;padding:9px 14px;margin-top:8px;
+}
+.manual .freeview{
+  font-family:var(--mono);font-size:12px;color:var(--vis);cursor:pointer;
+  background:transparent;border:none;padding:0;margin-bottom:22px;display:inline-block;
+}
+.manual .freeview:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+
+<canvas id="scene"></canvas>
+
+<div class="topbar">
+  <button class="menu-btn" id="menuBtn">☰ 메뉴</button>
+  <span class="title"><b>PHYSICAL-AI 3D FACTORY</b></span>
+  <button class="era-btn on" data-era="0">'22–23 토대</button>
+  <button class="era-btn" data-era="1">'24 범용 정책</button>
+  <button class="era-btn" data-era="2">'24말 연속 행동</button>
+  <button class="era-btn" data-era="3">'25 듀얼 시스템</button>
+  <button class="era-btn" data-era="4">'25 온디바이스</button>
+</div>
+
+<div class="menu-pop" id="menuPop">
+  <button id="mMission">🎯 학습 미션 시작/재시작</button>
+  <button id="mManual">📖 Physical AI 발전사 메뉴얼 <span class="k">M</span></button>
+  <button id="mHelp">조작법 보이기/숨기기</button>
+</div>
+
+<div class="mission-banner" id="mBanner">
+  <div class="mb-title" id="mbTitle"></div>
+  <div class="mb-goal" id="mbGoal"></div>
+  <div class="mb-meta">
+    <span class="tm" id="mbTimer"></span>
+    <span>
+      <button id="mbGiveup" style="display:none">이건 못 하겠어요 →</button>
+      <button id="mbExit">미션 그만두기</button>
+    </span>
+  </div>
+</div>
+
+<div class="mmodal" id="mModal">
+  <div class="mm-card">
+    <div id="mmBody"></div>
+    <div class="mm-actions" id="mmActions"></div>
+  </div>
+</div>
+
+<!-- ══════════ 발전사 메뉴얼 ══════════ -->
+<div class="manual" id="manual">
+  <button class="close" id="manualClose">닫기 ✕ (ESC)</button>
+  <div class="inner">
+    <div class="eyebrow">MANUAL — 핵심 논문 14편으로 보는 기술 흐름 · 2022 → 2025</div>
+    <h1>Physical AI는 어떻게 <span class="v">보고</span> · <span class="l">이해하고</span> · <span class="a">움직이게</span> 되었나</h1>
+    <p class="lede">
+      카메라로 본 장면과 언어 지시를 곧바로 모터 동작으로 바꾸는 모델을 <b>VLA(Vision-Language-Action)</b>라고 합니다.
+      아래 데모의 시대 버튼을 눌러 보고, 각 단계를 읽은 뒤 <b>3D 시뮬레이터에서 같은 시대로 직접 작업해 보면</b>
+      논문이 해결한 문제가 몸으로 느껴집니다.
+    </p>
+    <button class="freeview" id="freeViewBtn">🔓 미션 없이 모든 해설 바로 열람 →</button>
+
+    <!-- 히어로 데모: 같은 작업, 다른 시대 -->
+    <div class="mlab">
+      <div class="mlab-head">
+        <span class="t">DEMO — 같은 "물체 추적" 작업을 각 시대의 정책으로 실행해 보기</span>
+        <button class="mera-btn on" data-mera="0">'22–23 토대</button>
+        <button class="mera-btn" data-mera="1">'24 범용 정책</button>
+        <button class="mera-btn" data-mera="2">'24말 연속 행동</button>
+        <button class="mera-btn" data-mera="3">'25 듀얼 시스템</button>
+        <button class="mera-btn" data-mera="4">'25 온디바이스</button>
+      </div>
+      <canvas id="mArmCanvas" height="300"></canvas>
+      <div class="mlab-read">
+        <div><div class="k">행동 표현</div><div class="v" id="mrd0">—</div></div>
+        <div><div class="k">제어 주기</div><div class="v hi" id="mrd1">—</div></div>
+        <div><div class="k">대표 모델</div><div class="v" id="mrd2">—</div></div>
+        <div><div class="k">움직임 특성</div><div class="v" id="mrd3">—</div></div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="st-top"><span class="st-no">STAGE 00</span><span class="st-period">2022–2023 · 토대</span></div>
+      <h2>"행동도 토큰이다" — VLA의 탄생</h2>
+      <p>로봇의 행동을 언어처럼 <b>이산 토큰</b>으로 양자화하면 트랜스포머가 그대로 학습할 수 있다는 발견(RT-1),
+      그리고 웹 규모 시각-언어 모델을 로봇 데이터로 함께 학습시키면 <b>웹 지식이 행동으로 전이</b>된다는 증명(RT-2)이
+      이 시대를 엽니다. 한편 Diffusion Policy는 행동 생성을 "노이즈 제거"로 바꿔 매끄러운 행동 표현의 길을 열었고,
+      Open X-Embodiment는 22종 로봇의 데이터를 통합해 "데이터를 합치면 모두가 좋아진다"는 것을 보였습니다.</p>
+      <div class="mviz">
+        <div class="mviz-cap"><b>Diffusion Policy</b> — 무작위 노이즈에서 출발해, 반복적으로 노이즈를 제거하며 행동 궤적을 "조각"해 내는 과정</div>
+        <canvas class="mdC" id="mDiffCanvas" height="210"></canvas>
+        <div class="mviz-note">회색 곡선들은 잡음 섞인 중간 후보, 주황색이 최종 정제된 행동 궤적입니다. 여러 정답이 있어도 평균 내 버리지 않고 한 갈래를 또렷이 선택할 수 있는 것이 핵심입니다.</div>
+      </div>
+      <div class="papers">
+        <b>RT-1</b> 행동의 토큰화 <a href="https://arxiv.org/abs/2212.06817" target="_blank">arXiv↗</a> ·
+        <b>RT-2</b> 최초의 본격 VLA <a href="https://arxiv.org/abs/2307.15818" target="_blank">arXiv↗</a> ·
+        <b>Diffusion Policy</b> 노이즈 제거로 행동 생성 <a href="https://arxiv.org/abs/2303.04137" target="_blank">arXiv↗</a> ·
+        <b>Open X-Embodiment</b> 로봇계의 ImageNet <a href="https://arxiv.org/abs/2310.08864" target="_blank">arXiv↗</a>
+      </div>
+      <div class="try"><b>▶ 3D 시뮬레이터에서 체험</b>
+      메뉴얼을 닫고 <kbd>'22–23 토대</kbd> 버튼을 누른 뒤 방향키로 팔을 움직여 보세요. 행동이 주황 격자점으로만 뚝뚝 끊겨 이동합니다.</div>
+    </div>
+
+    <div class="stage">
+      <div class="st-top"><span class="st-no">STAGE 01</span><span class="st-period">2024 상반기 · 데이터 스케일링</span></div>
+      <h2>누구나 쓰는 "범용 정책"의 등장</h2>
+      <p>모은 데이터로 <b>오픈소스 범용 정책</b>을 실제로 만들어 배포한 시기입니다. Octo는 80만 궤적으로 학습한
+      첫 본격 오픈 generalist, OpenVLA는 <b>7B 모델이 55B RT-2-X를 16.5%p 이기며</b> "작은 모델 + 좋은 데이터"의
+      역전을 보여줬습니다.</p>
+      <div class="mviz">
+        <div class="mviz-cap"><b>교차-신체(Cross-Embodiment) 학습</b> — 서로 다른 로봇들의 데이터가 하나의 정책으로 모이고, 다시 각 로봇으로 흘러나가는 구조</div>
+        <canvas class="mdC" id="mXemCanvas" height="230"></canvas>
+        <div class="mviz-note">왼쪽: 형태가 다른 로봇들의 시연 데이터 → 가운데: 하나의 정책 → 오른쪽: 같은 가중치가 다른 몸체를 제어. 새 로봇은 가벼운 미세조정(LoRA)만 하면 됩니다.</div>
+      </div>
+      <div class="papers">
+        <b>Octo</b> 오픈소스 범용 정책 <a href="https://arxiv.org/abs/2405.12213" target="_blank">arXiv↗</a> ·
+        <b>OpenVLA</b> 7B 오픈 VLA <a href="https://arxiv.org/abs/2406.09246" target="_blank">arXiv↗</a>
+      </div>
+      <div class="try"><b>▶ 3D 시뮬레이터에서 체험</b>
+      <kbd>'24 범용 정책</kbd> — 격자가 잘아지고 8Hz로 빨라져, 같은 집기 작업이 눈에 띄게 수월해집니다.</div>
+    </div>
+
+    <div class="stage">
+      <div class="st-top"><span class="st-no">STAGE 02</span><span class="st-period">2024 하반기 · 새 아키텍처</span></div>
+      <h2>이산 토큰을 버리고 연속 행동으로</h2>
+      <p>"이해는 VLM이, 행동 생성은 전용 모듈이"라는 <b>분업 구조</b>가 도입됩니다. π0는 flow matching으로
+      <b>초당 50회의 연속 행동 묶음</b>을 생성해 빨래 개기 같은 정교한 작업을 해냈고, CogACT는 인지/행동 분리만으로
+      큰 폭의 성능 향상을, RoboVLMs는 설계 비교 지도를 제공했습니다.</p>
+      <div class="mviz">
+        <div class="mviz-cap"><b>이산 토큰 vs. 연속 행동(flow matching)</b> — 같은 목표 궤적을 따라갈 때의 차이</div>
+        <canvas class="mdC" id="mFlowCanvas" height="220"></canvas>
+        <div class="mviz-note">왼쪽(이산): 낮은 주기로 양자화된 명령 → 계단식. 오른쪽(연속 청크): ~50Hz의 매끄러운 곡선 — 옷감처럼 변형되는 물체도 다룰 수 있는 부드러움.</div>
+      </div>
+      <div class="papers">
+        <b>π0</b> flow matching 50Hz <a href="https://arxiv.org/abs/2410.24164" target="_blank">arXiv↗</a> ·
+        <b>CogACT</b> 인지·행동 분업 <a href="https://arxiv.org/abs/2411.19650" target="_blank">arXiv↗</a> ·
+        <b>RoboVLMs</b> 설계 공간 지도 <a href="https://arxiv.org/abs/2412.14058" target="_blank">arXiv↗</a>
+      </div>
+      <div class="try"><b>▶ 3D 시뮬레이터에서 체험</b>
+      <kbd>'24말 연속 행동</kbd>에서 팔을 크게 휘저으면 격자가 사라지고 주황 궤적이 곡선으로 변합니다.</div>
+    </div>
+
+    <div class="stage">
+      <div class="st-top"><span class="st-no">STAGE 03</span><span class="st-period">2025 상반기 · 인프라와 추론</span></div>
+      <h2>빅테크의 참전 — 추론하는 몸, 듀얼 시스템</h2>
+      <p>Google DeepMind와 NVIDIA가 정면으로 들어옵니다. 공통 구조는 <b>듀얼 시스템</b> —
+      천천히 생각하는 <b>System 2</b>(장면 이해·작업 계획)와 빠르게 반사하는 <b>System 1</b>(고주파 행동)이
+      한 모델 안에서 협업합니다.</p>
+      <div class="mviz">
+        <div class="mviz-cap"><b>듀얼 시스템(GR00T N1)</b> — 느린 추론 루프와 빠른 행동 루프가 다른 속도로 동시에 도는 구조</div>
+        <div class="dual">
+          <svg width="600" height="300" viewBox="0 0 600 300" style="max-width:100%;height:auto" role="img" aria-label="듀얼 시스템">
+            <defs>
+              <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 z" fill="#92A0B5"/>
+              </marker>
+            </defs>
+            <circle cx="170" cy="150" r="86" fill="none" stroke="#27303F" stroke-width="1.5"/>
+            <circle cx="170" cy="150" r="86" fill="none" stroke="#B392F9" stroke-width="1.5" stroke-dasharray="6 10" opacity=".55"/>
+            <g class="orb-slow"><circle cx="170" cy="64" r="6" fill="#B392F9"/></g>
+            <text x="170" y="138" text-anchor="middle" fill="#E9EDF4" font-size="15" font-weight="700" font-family="IBM Plex Sans KR">System 2</text>
+            <text x="170" y="160" text-anchor="middle" fill="#92A0B5" font-size="12" font-family="IBM Plex Sans KR">장면 이해 · 작업 계획</text>
+            <text x="170" y="180" text-anchor="middle" fill="#B392F9" font-size="12" font-family="IBM Plex Mono">VLM · 느림 (~수 Hz)</text>
+            <circle cx="430" cy="150" r="86" fill="none" stroke="#27303F" stroke-width="1.5"/>
+            <circle cx="430" cy="150" r="86" fill="none" stroke="#FFB454" stroke-width="1.5" stroke-dasharray="3 5" opacity=".7"/>
+            <g class="orb-fast"><circle cx="430" cy="64" r="6" fill="#FFB454"/></g>
+            <text x="430" y="138" text-anchor="middle" fill="#E9EDF4" font-size="15" font-weight="700" font-family="IBM Plex Sans KR">System 1</text>
+            <text x="430" y="160" text-anchor="middle" fill="#92A0B5" font-size="12" font-family="IBM Plex Sans KR">반사적 행동 생성</text>
+            <text x="430" y="180" text-anchor="middle" fill="#FFB454" font-size="12" font-family="IBM Plex Mono">DiT · 빠름 (~120Hz)</text>
+            <line x1="258" y1="135" x2="342" y2="135" stroke="#92A0B5" stroke-width="1.5" marker-end="url(#ar)"/>
+            <text x="300" y="125" text-anchor="middle" fill="#92A0B5" font-size="11" font-family="IBM Plex Sans KR">계획·잠재 목표</text>
+            <line x1="342" y1="168" x2="258" y2="168" stroke="#92A0B5" stroke-width="1.5" marker-end="url(#ar)" opacity=".6"/>
+            <text x="300" y="188" text-anchor="middle" fill="#92A0B5" font-size="11" font-family="IBM Plex Sans KR">상태 피드백</text>
+          </svg>
+        </div>
+        <div class="mviz-note">"어떤 순서로 정리할까"는 천천히 생각해도, 컵을 잡는 손가락은 생각 없이 빠르게 움직이는 사람의 구조와 같습니다.</div>
+      </div>
+      <div class="papers">
+        <b>Gemini Robotics</b> 프런티어 VLM의 신체화 <a href="https://arxiv.org/abs/2503.20020" target="_blank">arXiv↗</a> ·
+        <b>GR00T N1</b> 휴머노이드 파운데이션 모델 <a href="https://arxiv.org/abs/2503.14734" target="_blank">arXiv↗</a>
+      </div>
+      <div class="try"><b>▶ 3D 시뮬레이터에서 체험</b>
+      <kbd>'25 듀얼 시스템</kbd> — 120Hz 즉각 반응. 주행하면서 동시에 팔을 조작해 보세요.</div>
+    </div>
+
+    <div class="stage">
+      <div class="st-top"><span class="st-no">STAGE 04</span><span class="st-period">2025 중반 · 엣지 최적화</span></div>
+      <h2>현장 투입 — 로봇 안에서 도는 VLA</h2>
+      <p>클라우드 GPU 없이 로봇에 탑재된 컴퓨터에서 실시간으로 돌리는 단계입니다. 무기는 셋 —
+      <b>1-bit 양자화</b>(BitVLA), <b>병렬 디코딩</b>(PD-VLA), 그리고 추론이 늦어도 행동을 끊김 없이 잇는 <b>실시간 청킹</b>(RTC).</p>
+      <div class="edge3">
+        <div class="cell">
+          <div class="mviz-cap"><b>BitVLA</b> — 1-bit 양자화</div>
+          <canvas class="mdC" id="mBitCanvas" height="170"></canvas>
+          <div class="mviz-note">가중치를 {-1,0,+1} 세 값으로 — 메모리 ≈30%.</div>
+        </div>
+        <div class="cell">
+          <div class="mviz-cap"><b>PD-VLA</b> — 병렬 디코딩</div>
+          <canvas class="mdC" id="mPdCanvas" height="170"></canvas>
+          <div class="mviz-note">토큰을 한꺼번에 — 제어 주파수 ≈2.5×.</div>
+        </div>
+        <div class="cell">
+          <div class="mviz-cap"><b>RTC</b> — 실시간 청킹</div>
+          <canvas class="mdC" id="mRtcCanvas" height="170"></canvas>
+          <div class="mviz-note">지연 동안 이어붙임 → 동작 무중단.</div>
+        </div>
+      </div>
+      <div class="papers">
+        <b>BitVLA</b> <a href="https://arxiv.org/abs/2506.07530" target="_blank">arXiv↗</a> ·
+        <b>PD-VLA</b> <a href="https://arxiv.org/abs/2503.02310" target="_blank">arXiv↗</a> ·
+        <b>RTC</b> <a href="https://arxiv.org/abs/2506.07339" target="_blank">arXiv↗</a>
+      </div>
+      <div class="try"><b>▶ 3D 시뮬레이터에서 체험</b>
+      <kbd>'25 온디바이스</kbd>에서 팔을 빠르게 움직여 보세요. <span style="color:var(--bad)">빨간 점</span>(보정 전)과
+      주황 점(RTC 보정 후)의 간극이 곧 보정 효과입니다.</div>
+    </div>
+
+    <div class="stage">
+      <div class="st-top"><span class="st-no">STAGE 05</span><span class="st-period">2025 이후</span></div>
+      <h2>그 이후 — 수렴하는 다섯 갈래</h2>
+      <p>한 줄 요약: <b>"행동을 토큰으로 만들었고 → 데이터를 모아 범용 정책을 열었고 → 연속 행동으로 정교해졌고 →
+      추론하는 듀얼 시스템이 되었고 → 마침내 로봇 안으로 들어갔다."</b> 이후 방향은 휴머노이드 파운데이션 모델 경쟁,
+      합성+실데이터 피라미드, 월드 모델 융합, 완전 온디바이스 자율성의 수렴입니다.</p>
+    </div>
+
+    <div class="src">
+      구성 출처: 엥지유니버스 「Physical AI 핵심 논문 14편 리뷰」(2025.12.12) —
+      <a href="https://www.youtube.com/watch?v=8V2a8Ty5-yk" target="_blank">영상 보기 ↗</a><br>
+      각 논문 설명은 arXiv 원문 기반 재구성. 시뮬레이터의 시대별 거동(주기·양자화·지연·보정)은 교육용 단순화 모델입니다.
+    </div>
+  </div>
+</div>
+
+<div class="readout">
+  <div class="hd">Robot &amp; Factory Status</div>
+  <div class="row"><span class="k">대표 모델</span><span class="v" id="rModel">—</span></div>
+  <div class="row"><span class="k">기체 세대</span><span class="v" id="rGen">—</span></div>
+  <div class="row"><span class="k">제어 주기</span><span class="v hi" id="rHz">—</span></div>
+  <div class="row"><span class="k">추론 지연</span><span class="v" id="rLat">—</span></div>
+  <div class="row"><span class="k">팔 추종 오차</span><span class="v" id="rErr">—</span></div>
+  <div class="row"><span class="k">그리퍼</span><span class="v" id="rGrip">열림</span></div>
+  <div class="row"><span class="k">공장</span><span class="v fac" id="rFac">대기</span></div>
+  <div class="row"><span class="k">생산 수량</span><span class="v ok" id="rCount">0개</span></div>
+  <div class="ghost-note" id="ghostNote">● 빨간 점 = RTC 보정이 없을 때의 위치</div>
+</div>
+
+<div class="help" id="helpBox">
+  <div class="full">
+    <b>주행</b> <kbd>W</kbd><kbd>S</kbd> 전·후진 · <kbd>A</kbd><kbd>D</kbd> 회전<br>
+    <b>팔</b> <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> 타겟 · <kbd>Q</kbd><kbd>E</kbd> 높이<br>
+    <b>집기/놓기</b> <kbd>Space</kbd> · <b>메뉴얼</b> <kbd>M</kbd><br>
+    <b>카메라</b> 드래그 회전 · 휠 줌<br>
+    <div class="goal">목표: 보라 공 → 투입구(청록 링) → 컨베이어·프레스 가공 → 금색 완제품</div>
+  </div>
+  <div class="toggle"><b>키보드 필요</b> · 터치는 카메라만</div>
+</div>
+
+<div class="touch-ui" id="touchUI">
+  <div class="joy" id="joyL"><div class="joy-label">주행</div><div class="knob" id="knobL"></div></div>
+  <div class="joy" id="joyR"><div class="joy-label">팔</div><div class="knob" id="knobR"></div></div>
+  <div class="tbtns">
+    <button id="btnUp">▲</button>
+    <button id="btnDown">▼</button>
+    <button id="btnGrab">✊</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+
+var isTouch=('ontouchstart' in window)||(window.matchMedia&&window.matchMedia('(pointer: coarse)').matches);
+if(isTouch)document.body.classList.add('touch');
+
+/* ════════════════ 시대별 정책 ════════════════ */
+var ERAS = [
+  {model:'RT-1 / RT-2', gen:'Mk.1 연구용 리그', hz:'2.5 Hz', rate:2.5, grid:0.5, latency:0, rtc:false, snap:0.65,
+   tip:"'22–23 토대 — Mk.1 프로토타입 리그. 행동이 격자에 뚝뚝 끊깁니다"},
+  {model:'Octo / OpenVLA', gen:'Mk.2 양산 1세대', hz:'8 Hz', rate:8, grid:0.2, latency:0, rtc:false, snap:0.45,
+   tip:"'24 범용 정책 — Mk.2 양산형. 8Hz로 빨라지고 격자가 잘아졌습니다"},
+  {model:'π0 / CogACT', gen:'Mk.3 협동로봇형', hz:'50 Hz', rate:50, grid:0, latency:0, rtc:false, snap:0.17,
+   tip:"'24말 연속 행동 — Mk.3 코봇. 1초 분량 부드러운 행동 묶음, 곡선 추종"},
+  {model:'GR00T N1 / Gemini Robotics', gen:'Mk.4 산업 플래그십', hz:'120 Hz', rate:120, grid:0, latency:0, rtc:false, snap:0.16,
+   tip:"'25 듀얼 시스템 — Mk.4 플래그십. 느린 계획 + 빠른 반사, 120Hz 즉각 반응"},
+  {model:'BitVLA / PD-VLA / RTC', gen:'Mk.5 온디바이스 에디션', hz:'120 Hz', rate:120, grid:0, latency:0.35, rtc:true, snap:0.16,
+   tip:"'25 온디바이스 — Mk.5. 0.35초 늦은 관측을 RTC가 예측 보정 (빨간 점과 비교)"}
+];
+var era = 0;
+
+/* ════════════════ 씬 ════════════════ */
+var canvas=document.getElementById('scene');
+var renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+var scene=new THREE.Scene();
+scene.background=new THREE.Color(0x10141B);
+scene.fog=new THREE.Fog(0x10141B,20,46);
+var camera=new THREE.PerspectiveCamera(52,1,0.1,140);
+
+var cam={theta:-0.7,phi:1.0,dist:9.5,target:new THREE.Vector3(0,1,0)};
+function updateOrbit(){
+  cam.phi=Math.max(0.15,Math.min(1.45,cam.phi));
+  cam.dist=Math.max(4,Math.min(22,cam.dist));
+  var sp=Math.sin(cam.phi),cp=Math.cos(cam.phi);
+  camera.position.set(
+    cam.target.x+cam.dist*sp*Math.sin(cam.theta),
+    cam.target.y+cam.dist*cp,
+    cam.target.z+cam.dist*sp*Math.cos(cam.theta)
+  );
+  camera.lookAt(cam.target);
+}
+
+scene.add(new THREE.HemisphereLight(0x9FB4D0,0x10141B,0.55));
+var sun=new THREE.DirectionalLight(0xFFE9C8,0.95);
+sun.position.set(7,12,5);sun.castShadow=true;
+var _smap=isTouch?1024:2048;
+sun.shadow.mapSize.set(_smap,_smap);
+sun.shadow.camera.left=-14;sun.shadow.camera.right=14;
+sun.shadow.camera.top=14;sun.shadow.camera.bottom=-14;
+scene.add(sun);
+
+var floor=new THREE.Mesh(new THREE.PlaneGeometry(90,90),
+  new THREE.MeshStandardMaterial({color:0x151B26,roughness:0.95}));
+floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;scene.add(floor);
+var grid=new THREE.GridHelper(90,90,0x27303F,0x1C2433);
+grid.position.y=0.001;scene.add(grid);
+
+/* ════════════════ 재질 ════════════════ */
+var MAT={
+  body:new THREE.MeshStandardMaterial({color:0xD8DEE8,roughness:0.45,metalness:0.35}),
+  joint:new THREE.MeshStandardMaterial({color:0x39455A,roughness:0.5,metalness:0.5}),
+  accent:new THREE.MeshStandardMaterial({color:0xFFB454,roughness:0.4,metalness:0.3}),
+  dark:new THREE.MeshStandardMaterial({color:0x222A38,roughness:0.7,metalness:0.2}),
+  tire:new THREE.MeshStandardMaterial({color:0x1A1F29,roughness:0.9}),
+  fac:new THREE.MeshStandardMaterial({color:0x2A3447,roughness:0.65,metalness:0.3}),
+  facDark:new THREE.MeshStandardMaterial({color:0x1E2635,roughness:0.8}),
+  steel:new THREE.MeshStandardMaterial({color:0x6B7689,roughness:0.35,metalness:0.7}),
+  belt:new THREE.MeshStandardMaterial({color:0x12161E,roughness:0.9}),
+  hazardY:new THREE.MeshStandardMaterial({color:0xE0B33C,roughness:0.6}),
+  glow:new THREE.MeshBasicMaterial({color:0x53D7E0})
+};
+function box(w,h,d,m){var g=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);g.castShadow=true;return g;}
+function cyl(r,h,m,seg){var g=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,seg||24),m);g.castShadow=true;return g;}
+function cone(r,h,m){var g=new THREE.Mesh(new THREE.CylinderGeometry(0.03,r,h,24),m);g.castShadow=true;return g;}
+
+/* ════════════════ 모바일 로봇 ════════════════ */
+var robot=new THREE.Group();
+robot.position.set(2.5,0,1.5);
+robot.rotation.y=Math.PI*0.75;
+scene.add(robot);
+
+var CH_TOP=0.5;
+/* ── 기구 골격 (시대 불변: 관절·바퀴·그리퍼) ── */
+var wheels=[];
+var armRoot=new THREE.Group();armRoot.position.y=CH_TOP;robot.add(armRoot);
+var L1=1.45,L2=1.25,SHOULDER_H=0.75;
+var yawG=new THREE.Group();yawG.position.y=0.24;armRoot.add(yawG);
+var shoulderG=new THREE.Group();shoulderG.position.y=SHOULDER_H-0.24;yawG.add(shoulderG);
+var elbowG=new THREE.Group();elbowG.position.x=L1;shoulderG.add(elbowG);
+var wristG=new THREE.Group();wristG.position.x=L2;elbowG.add(wristG);
+var fingerT=box(0.28,0.04,0.09,MAT.accent);
+var fingerB=box(0.28,0.04,0.09,MAT.accent);
+wristG.add(fingerT);wristG.add(fingerB);
+
+var GRIP_PT=new THREE.Vector3(0.31,0,0);
+var FINGER_X=0.3,BALL_R=0.11,PROD_S=0.2;
+var FINGER_OPEN=0.16,FINGER_CLOSED=0.05;
+fingerT.position.set(FINGER_X,FINGER_OPEN,0);
+fingerB.position.set(FINGER_X,-FINGER_OPEN,0);
+function getEEWorld(){return wristG.localToWorld(GRIP_PT.clone());}
+
+/* ════════════════ 시대별 스킨 (외장만 교체) ════════════════ */
+var skinMeshes=[];
+function smat(o){return new THREE.MeshStandardMaterial(o);}
+function bmat(c){return new THREE.MeshBasicMaterial({color:c});}
+function S(parent,mesh){mesh.castShadow=true;parent.add(mesh);skinMeshes.push(mesh);return mesh;}
+function sbox(p,w,h,d,m){return S(p,new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m));}
+function scyl(p,r,h,m,seg){return S(p,new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,seg||24),m));}
+function ssph(p,r,m){return S(p,new THREE.Mesh(new THREE.SphereGeometry(r,24,18),m));}
+function storus(p,r,t,m){return S(p,new THREE.Mesh(new THREE.TorusGeometry(r,t,10,32),m));}
+function clearSkin(){
+  for(var i=0;i<skinMeshes.length;i++){
+    var m=skinMeshes[i];
+    if(m.parent)m.parent.remove(m);
+    if(m.geometry)m.geometry.dispose();
+    if(m.material&&m.material.dispose)m.material.dispose();
+  }
+  skinMeshes=[];
+  wheels.length=0;
+}
+function addWheels(tireM,hubM,tw){
+  [[0.38,0.42],[0.38,-0.42],[-0.38,0.42],[-0.38,-0.42]].forEach(function(p){
+    var w=scyl(robot,0.19,tw,tireM,20);
+    w.rotation.x=Math.PI/2;
+    w.position.set(p[0],0.19,p[1]);
+    var hub=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,tw+0.012,12),hubM);
+    w.add(hub);skinMeshes.push(hub);
+    wheels.push(w);
+  });
+}
+// 가로 원통 링크 (축을 +x로)
+function xcyl(p,r,len,m){
+  var c=scyl(p,r,len,m,20);
+  c.rotation.z=-Math.PI/2;
+  c.position.x=len/2;
+  return c;
+}
+
+/* Mk.1 — '22–23 연구용 프로토타입 리그 */
+function skin0(){
+  var al=smat({color:0x8A93A1,roughness:0.7,metalness:0.4});
+  var dk=smat({color:0x3A414D,roughness:0.85});
+  var pl=smat({color:0x575F6C,roughness:0.8});
+  sbox(robot,1.05,0.24,0.78,pl).position.y=0.34;
+  [[0.42],[-0.42]].forEach(function(z){
+    sbox(robot,1.2,0.06,0.06,al).position.set(0,0.22,z[0]);
+  });
+  [[0.55],[-0.55]].forEach(function(x){
+    sbox(robot,0.06,0.06,0.9,al).position.set(x[0],0.22,0);
+  });
+  sbox(robot,0.9,0.04,0.6,dk).position.y=CH_TOP;
+  addWheels(dk,al,0.09);
+  sbox(armRoot,0.5,0.18,0.5,dk).position.y=0.09;
+  sbox(yawG,0.4,0.36,0.4,pl).position.y=0.18;
+  sbox(shoulderG,0.3,0.3,0.3,dk);
+  sbox(shoulderG,L1,0.22,0.22,al).position.x=L1/2;
+  var cable=scyl(shoulderG,0.02,L1*0.9,dk,8);
+  cable.rotation.z=-Math.PI/2;cable.position.set(L1/2,0.14,0.06);
+  sbox(elbowG,0.26,0.26,0.26,dk);
+  sbox(elbowG,L2,0.18,0.18,al).position.x=L2/2;
+  sbox(wristG,0.16,0.2,0.2,dk).position.x=0.06;
+}
+
+/* Mk.2 — '24 양산 1세대 */
+function skin1(){
+  var bd=smat({color:0xD8DEE8,roughness:0.45,metalness:0.35});
+  var jt=smat({color:0x39455A,roughness:0.5,metalness:0.5});
+  var ac=smat({color:0xFFB454,roughness:0.4,metalness:0.3});
+  var dk=smat({color:0x222A38,roughness:0.7,metalness:0.2});
+  sbox(robot,1.15,0.32,0.85,dk).position.y=0.34;
+  sbox(robot,0.95,0.06,0.65,ac).position.y=CH_TOP+0.01;
+  S(robot,new THREE.Mesh(new THREE.BoxGeometry(0.06,0.08,0.3),bmat(0x53D7E0))).position.set(0.6,0.36,0);
+  addWheels(smat({color:0x1A1F29,roughness:0.9}),ac,0.12);
+  scyl(armRoot,0.4,0.18,dk).position.y=0.09;
+  scyl(armRoot,0.32,0.08,ac).position.y=0.21;
+  scyl(yawG,0.27,0.4,jt).position.y=0.2;
+  ssph(shoulderG,0.22,jt);
+  sbox(shoulderG,L1,0.26,0.26,bd).position.x=L1/2;
+  sbox(shoulderG,L1*0.7,0.28,0.07,ac).position.set(L1/2,0,0.115);
+  ssph(elbowG,0.18,jt);
+  sbox(elbowG,L2,0.2,0.2,bd).position.x=L2/2;
+  var wj=scyl(wristG,0.11,0.18,jt);wj.rotation.z=Math.PI/2;
+  sbox(wristG,0.09,0.26,0.22,dk).position.x=0.12;
+}
+
+/* Mk.3 — '24말 협동로봇형 (백색 코봇) */
+function skin2(){
+  var wh=smat({color:0xEDF0F4,roughness:0.35,metalness:0.1});
+  var gr=smat({color:0x39414E,roughness:0.6});
+  var or=smat({color:0xFF8A3D,roughness:0.45,metalness:0.2});
+  sbox(robot,1.15,0.3,0.85,wh).position.y=0.36;
+  sbox(robot,1.27,0.12,0.97,gr).position.y=0.22;
+  S(robot,new THREE.Mesh(new THREE.BoxGeometry(0.04,0.05,0.5),bmat(0x53D7E0))).position.set(0.6,0.42,0);
+  sbox(robot,0.95,0.05,0.65,wh).position.y=CH_TOP+0.01;
+  addWheels(smat({color:0x1A1F29,roughness:0.9}),smat({color:0xB9C2CE,roughness:0.3,metalness:0.7}),0.14);
+  [[0.38,0.45],[0.38,-0.45],[-0.38,0.45],[-0.38,-0.45]].forEach(function(p){
+    sbox(robot,0.32,0.04,0.16,gr).position.set(p[0],0.42,p[1]);
+  });
+  scyl(armRoot,0.36,0.16,wh).position.y=0.08;
+  scyl(armRoot,0.37,0.05,or).position.y=0.19;
+  scyl(yawG,0.26,0.38,wh).position.y=0.19;
+  scyl(yawG,0.27,0.06,or).position.y=0.33;
+  ssph(shoulderG,0.23,wh);
+  xcyl(shoulderG,0.13,L1,wh);
+  var r1=scyl(shoulderG,0.145,0.05,or);r1.rotation.z=Math.PI/2;r1.position.x=0.28;
+  ssph(elbowG,0.19,wh);
+  xcyl(elbowG,0.11,L2,wh);
+  var r2=scyl(elbowG,0.125,0.05,or);r2.rotation.z=Math.PI/2;r2.position.x=0.24;
+  var wj=scyl(wristG,0.1,0.16,wh);wj.rotation.z=Math.PI/2;
+  sbox(wristG,0.09,0.24,0.2,gr).position.x=0.12;
+}
+
+/* Mk.4 — '25 산업 플래그십 (그라파이트 + 시안 발광) */
+function skin3(){
+  var gp=smat({color:0x232B36,roughness:0.4,metalness:0.7});
+  var st=smat({color:0x6B7689,roughness:0.3,metalness:0.8});
+  sbox(robot,1.15,0.32,0.85,gp).position.y=0.35;
+  sbox(robot,0.95,0.05,0.65,st).position.y=CH_TOP+0.01;
+  [[0.44],[-0.44]].forEach(function(z){
+    S(robot,new THREE.Mesh(new THREE.BoxGeometry(1.0,0.03,0.015),bmat(0x53D7E0))).position.set(0,0.38,z[0]);
+  });
+  var lid=scyl(robot,0.09,0.09,gp,18);lid.position.set(-0.35,CH_TOP+0.07,0);
+  S(robot,new THREE.Mesh(new THREE.CylinderGeometry(0.095,0.095,0.022,18),bmat(0x53D7E0))).position.set(-0.35,CH_TOP+0.07,0);
+  addWheels(smat({color:0x14181F,roughness:0.85}),st,0.13);
+  for(var w=0;w<wheels.length;w++){
+    var ring=new THREE.Mesh(new THREE.TorusGeometry(0.1,0.012,8,24),bmat(0x53D7E0));
+    ring.rotation.x=Math.PI/2;                       // 차축 정렬 (바퀴 면과 평행)
+    ring.position.y=(w%2===0?1:-1)*(0.13/2+0.01);    // 바깥 면으로
+    wheels[w].add(ring);skinMeshes.push(ring);
+  }
+  scyl(armRoot,0.38,0.16,gp).position.y=0.08;
+  var gr1=storus(armRoot,0.34,0.015,bmat(0x53D7E0));gr1.rotation.x=Math.PI/2;gr1.position.y=0.18;
+  scyl(yawG,0.26,0.4,gp).position.y=0.2;
+  ssph(shoulderG,0.22,st);
+  sbox(shoulderG,L1,0.25,0.25,gp).position.x=L1/2;
+  sbox(shoulderG,L1*0.85,0.04,0.04,st).position.set(L1/2,0.14,0.1);
+  S(shoulderG,new THREE.Mesh(new THREE.BoxGeometry(L1*0.8,0.02,0.012),bmat(0x53D7E0))).position.set(L1/2,0,0.13);
+  ssph(elbowG,0.18,st);
+  sbox(elbowG,L2,0.19,0.19,gp).position.x=L2/2;
+  S(elbowG,new THREE.Mesh(new THREE.BoxGeometry(L2*0.8,0.02,0.012),bmat(0x53D7E0))).position.set(L2/2,0,0.1);
+  var wj=scyl(wristG,0.1,0.16,st);wj.rotation.z=Math.PI/2;
+  sbox(wristG,0.09,0.24,0.2,gp).position.x=0.12;
+}
+
+/* Mk.5 — '25 온디바이스 (블랙·골드 글로시) */
+function skin4(){
+  var bk=smat({color:0x0E1116,roughness:0.2,metalness:0.85});
+  var gd=smat({color:0xD9A441,roughness:0.25,metalness:0.9});
+  sbox(robot,1.15,0.3,0.85,bk).position.y=0.36;
+  var nose=sbox(robot,0.22,0.2,0.7,bk);nose.position.set(0.63,0.34,0);nose.rotation.z=-0.25;
+  sbox(robot,0.95,0.04,0.65,gd).position.y=CH_TOP+0.01;
+  [[0.44],[-0.44]].forEach(function(z){
+    S(robot,new THREE.Mesh(new THREE.BoxGeometry(1.05,0.02,0.012),bmat(0xFFC76B))).position.set(0,0.45,z[0]);
+  });
+  var ug=S(robot,new THREE.Mesh(new THREE.BoxGeometry(0.9,0.012,0.58),bmat(0xFFB454)));
+  ug.position.y=0.13;ug.castShadow=false;
+  var ant=scyl(robot,0.012,0.42,gd,8);ant.position.set(-0.5,CH_TOP+0.25,-0.3);
+  S(robot,new THREE.Mesh(new THREE.SphereGeometry(0.028,10,8),bmat(0xFFC76B))).position.set(-0.5,CH_TOP+0.47,-0.3);
+  addWheels(smat({color:0x14181F,roughness:0.8}),gd,0.13);
+  for(var w=0;w<wheels.length;w++){
+    var ring=new THREE.Mesh(new THREE.TorusGeometry(0.1,0.014,8,24),bmat(0xFFC76B));
+    ring.rotation.x=Math.PI/2;
+    ring.position.y=(w%2===0?1:-1)*(0.13/2+0.01);
+    wheels[w].add(ring);skinMeshes.push(ring);
+  }
+  [[0.38,0.46],[0.38,-0.46],[-0.38,0.46],[-0.38,-0.46]].forEach(function(p){
+    sbox(robot,0.34,0.04,0.14,gd).position.set(p[0],0.43,p[1]);
+  });
+  scyl(armRoot,0.38,0.16,bk).position.y=0.08;
+  var gr1=storus(armRoot,0.33,0.018,bmat(0xFFC76B));gr1.rotation.x=Math.PI/2;gr1.position.y=0.18;
+  scyl(yawG,0.26,0.4,bk).position.y=0.2;
+  scyl(yawG,0.27,0.05,gd).position.y=0.34;
+  ssph(shoulderG,0.22,gd);
+  sbox(shoulderG,L1,0.24,0.24,bk).position.x=L1/2;
+  S(shoulderG,new THREE.Mesh(new THREE.BoxGeometry(L1*0.85,0.02,0.012),bmat(0xFFC76B))).position.set(L1/2,0.06,0.125);
+  var rg1=scyl(shoulderG,0.14,0.05,gd);rg1.rotation.z=Math.PI/2;rg1.position.x=0.26;
+  ssph(elbowG,0.18,gd);
+  sbox(elbowG,L2,0.18,0.18,bk).position.x=L2/2;
+  S(elbowG,new THREE.Mesh(new THREE.BoxGeometry(L2*0.85,0.02,0.012),bmat(0xFFC76B))).position.set(L2/2,0.05,0.095);
+  var wj=scyl(wristG,0.1,0.16,gd);wj.rotation.z=Math.PI/2;
+  sbox(wristG,0.09,0.24,0.2,bk).position.x=0.12;
+}
+
+var SKINS=[skin0,skin1,skin2,skin3,skin4];
+function buildSkin(i){clearSkin();SKINS[i]();}
+
+/* ════════════════ 팔 타겟 / 마커 / 궤적 ════════════════ */
+var targetL=new THREE.Vector3(1.8,0.9,0);
+var cmdL=targetL.clone();
+var eeL=targetL.clone();
+var ghostL=null;
+
+var tgtG=new THREE.Group();scene.add(tgtG);
+tgtG.add(new THREE.Mesh(new THREE.SphereGeometry(0.06,16,12),MAT.glow));
+var tgtRing=new THREE.Mesh(new THREE.TorusGeometry(0.16,0.011,10,40),
+  new THREE.MeshBasicMaterial({color:0x53D7E0,transparent:true,opacity:0.8}));
+tgtRing.rotation.x=Math.PI/2;tgtG.add(tgtRing);
+var cmdM=new THREE.Mesh(new THREE.SphereGeometry(0.05,12,10),
+  new THREE.MeshBasicMaterial({color:0xFFB454}));
+scene.add(cmdM);
+var ghostM=new THREE.Mesh(new THREE.SphereGeometry(0.05,12,10),
+  new THREE.MeshBasicMaterial({color:0xFF5D5D,transparent:true,opacity:0.85}));
+ghostM.visible=false;scene.add(ghostM);
+
+var snapGrid=new THREE.GridHelper(3,6,0xFFB454,0xFFB454);
+snapGrid.material.transparent=true;snapGrid.material.opacity=0.14;
+scene.add(snapGrid);
+
+var TRAIL_N=240;
+var trailPos=new Float32Array(TRAIL_N*3);
+var trailGeo=new THREE.BufferGeometry();
+trailGeo.setAttribute('position',new THREE.BufferAttribute(trailPos,3));
+trailGeo.setDrawRange(0,0);
+var trail=new THREE.Line(trailGeo,
+  new THREE.LineBasicMaterial({color:0xFFB454,transparent:true,opacity:0.6}));
+trail.frustumCulled=false;scene.add(trail);
+var trailLen=0;
+
+/* ════════════════ 재료 패드 ════════════════ */
+var MAT_PAD=new THREE.Vector3(4.5,0,3.0);
+var matPad=cyl(0.55,0.05,MAT.facDark,36);matPad.position.copy(MAT_PAD);matPad.position.y=0.025;
+matPad.receiveShadow=true;scene.add(matPad);
+var matPadRing=new THREE.Mesh(new THREE.TorusGeometry(0.55,0.018,10,48),
+  new THREE.MeshBasicMaterial({color:0xB392F9,transparent:true,opacity:0.7}));
+matPadRing.rotation.x=Math.PI/2;matPadRing.position.copy(MAT_PAD);matPadRing.position.y=0.06;
+scene.add(matPadRing);
+
+/* ════════════════ 조립 소켓 스테이션 ════════════════ */
+var SOCKET_BASE=new THREE.Vector3(3.3,0,-3.3); /* 0.5격자 최근접 0.346m / 0.2격자 0.173m */
+var sockPed=cyl(0.3,0.55,MAT.steel,28);
+sockPed.position.set(SOCKET_BASE.x,0.275,SOCKET_BASE.z);scene.add(sockPed);
+var sockTop=cyl(0.34,0.06,MAT.facDark,28);
+sockTop.position.set(SOCKET_BASE.x,0.58,SOCKET_BASE.z);scene.add(sockTop);
+var SOCKET_W=new THREE.Vector3(SOCKET_BASE.x,0.7,SOCKET_BASE.z);
+var sockRingMat=new THREE.MeshBasicMaterial({color:0xB392F9,transparent:true,opacity:0.85});
+var sockRing=new THREE.Mesh(new THREE.TorusGeometry(0.15,0.018,10,40),sockRingMat);
+sockRing.rotation.x=Math.PI/2;
+sockRing.position.set(SOCKET_BASE.x,0.64,SOCKET_BASE.z);
+scene.add(sockRing);
+var sockBeam=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,1.6,8),
+  new THREE.MeshBasicMaterial({color:0xB392F9,transparent:true,opacity:0.18}));
+sockBeam.position.set(SOCKET_BASE.x,1.4,SOCKET_BASE.z);scene.add(sockBeam);
+var sockR=0.15;            // 현재 성공 판정 반경
+var sockFlash=0;           // 성공 연출
+var ballSocketUntil=0;     // 소켓에 꽂힌 공 유지 시간
+function setSocketR(r){
+  sockR=r;
+  sockRing.scale.set(r/0.15,r/0.15,1);
+}
+
+/* ════════════════ 무빙 카트 스테이션 (미니게임 ②) ════════════════ */
+var TRACK_Z=-5.9,TRACK_X0=0.2,TRACK_X1=4.2;
+[[-0.28],[0.28]].forEach(function(off){
+  var rail=box(TRACK_X1-TRACK_X0+0.6,0.05,0.06,MAT.steel);
+  rail.position.set((TRACK_X0+TRACK_X1)/2,0.06,TRACK_Z+off[0]);
+  scene.add(rail);
+});
+var cart=new THREE.Group();scene.add(cart);
+var cartBody=box(0.56,0.12,0.5,MAT.facDark);cartBody.position.y=0.2;cart.add(cartBody);
+var cartTop=box(0.5,0.04,0.44,MAT.dark);cartTop.position.y=0.28;cart.add(cartTop);
+[[-0.2,-0.2],[0.2,-0.2],[-0.2,0.2],[0.2,0.2]].forEach(function(p){
+  var cw=cyl(0.07,0.05,MAT.tire,12);cw.rotation.x=Math.PI/2;
+  cw.position.set(p[0],0.07,p[1]);cart.add(cw);
+});
+var cartRingMat=new THREE.MeshBasicMaterial({color:0x53D7E0,transparent:true,opacity:0.9});
+var cartRing=new THREE.Mesh(new THREE.TorusGeometry(0.22,0.018,10,36),cartRingMat);
+cartRing.rotation.x=Math.PI/2;cartRing.position.y=0.32;cart.add(cartRing);
+var CART_C=new THREE.Vector3(0,0.55,TRACK_Z);
+var cartVel=new THREE.Vector3();
+var cartSpd=0,ballCartUntil=0,cartFlash=0;
+function updateCart(dt){
+  var mid=(TRACK_X0+TRACK_X1)/2,amp=(TRACK_X1-TRACK_X0)/2;
+  cart.position.set(mid+amp*Math.sin(simT*0.45),0,TRACK_Z);
+  cartVel.set(amp*0.45*Math.cos(simT*0.45),0,0);
+  cartSpd=Math.abs(cartVel.x);
+  CART_C.set(cart.position.x,0.55,TRACK_Z);
+  cartFlash=Math.max(0,cartFlash-dt*1.5);
+  cartRingMat.color.setHex(cartFlash>0?0x7BD88F:(cartSpd>0.4?0x53D7E0:0xFF5D5D));
+  if(ballCartUntil>0){
+    if(simT<ballCartUntil){ball.position.set(CART_C.x,0.41,CART_C.z);ball.userData.vy=0;}
+    else{ballCartUntil=0;spawnMaterial();}
+  }
+}
+function cartSuccess(){
+  ballCartUntil=simT+1.6;cartFlash=1;
+  showToast('🛒 카트 적재 성공 — 라인으로 출발!');
+  missionEvent('cart');
+}
+
+/* ════════════════ 통신 음영 구역 (미니게임 ③) ════════════════ */
+var ZONE_C=new THREE.Vector3(-5.2,0,4.8),ZONE_R=3.2;
+var zoneDisc=new THREE.Mesh(new THREE.CircleGeometry(ZONE_R,48),
+  new THREE.MeshBasicMaterial({color:0x3A1020,transparent:true,opacity:0.4}));
+zoneDisc.rotation.x=-Math.PI/2;zoneDisc.position.set(ZONE_C.x,0.006,ZONE_C.z);scene.add(zoneDisc);
+var zoneEdge=new THREE.Mesh(new THREE.TorusGeometry(ZONE_R,0.03,8,64),
+  new THREE.MeshBasicMaterial({color:0xFF5D5D,transparent:true,opacity:0.55}));
+zoneEdge.rotation.x=Math.PI/2;zoneEdge.position.set(ZONE_C.x,0.03,ZONE_C.z);scene.add(zoneEdge);
+var DELIVER_W=new THREE.Vector3(ZONE_C.x,0.25,ZONE_C.z);
+var dlvPad=cyl(0.34,0.05,MAT.facDark,32);
+dlvPad.position.set(ZONE_C.x,0.025,ZONE_C.z);scene.add(dlvPad);
+var dlvRingMat=new THREE.MeshBasicMaterial({color:0xFFB454,transparent:true,opacity:0.85});
+var dlvRing=new THREE.Mesh(new THREE.TorusGeometry(0.3,0.02,10,40),dlvRingMat);
+dlvRing.rotation.x=Math.PI/2;dlvRing.position.set(ZONE_C.x,0.07,ZONE_C.z);scene.add(dlvRing);
+var dlvBeam=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,2.2,8),
+  new THREE.MeshBasicMaterial({color:0xFFB454,transparent:true,opacity:0.15}));
+dlvBeam.position.set(ZONE_C.x,1.1,ZONE_C.z);scene.add(dlvBeam);
+var dlvFlash=0,ballDlvUntil=0,ballZoneT=0;
+var zone={state:'out',t:0};
+var commFrozen=false;
+function zoneTick(dt){
+  var d=Math.hypot(robot.position.x-ZONE_C.x,robot.position.z-ZONE_C.z);
+  var inside=d<ZONE_R;
+  if(era===4){
+    if(inside&&zone.state!=='ondev'){zone.state='ondev';showToast('📶 신호 없음 — 그러나 두뇌는 온보드라 멀쩡합니다');}
+    if(!inside&&zone.state==='ondev')zone.state='out';
+    return 'none';
+  }
+  zone.t+=dt;
+  if(zone.state==='out'||zone.state==='ondev'){
+    if(inside){zone.state='warn';zone.t=0;showToast('⚠ 통신 음영 구역 진입 — 클라우드 신호 약해짐');}
+    return 'none';
+  }
+  if(zone.state==='warn'){
+    if(!inside){zone.state='out';return 'none';}
+    if(zone.t>0.6){zone.state='frozen';zone.t=0;showToast('🔌 클라우드 두절 — 로봇 응답 없음');return 'frozen';}
+    return 'none';
+  }
+  if(zone.state==='frozen'){
+    if(zone.t>1.6){zone.state='eject';zone.t=0;showToast('🛟 안전 모드 — 신호 구역으로 자동 복귀');}
+    return 'frozen';
+  }
+  if(zone.state==='eject'){
+    var dir=new THREE.Vector3(robot.position.x-ZONE_C.x,0,robot.position.z-ZONE_C.z);
+    if(dir.lengthSq()<1e-4)dir.set(1,0,0);
+    dir.normalize();
+    robot.position.x+=dir.x*1.3*dt;
+    robot.position.z+=dir.z*1.3*dt;
+    for(var ew=0;ew<wheels.length;ew++)wheels[ew].rotation.y+=1.3*dt/0.19;
+    if(d>ZONE_R+0.3){zone.state='out';showToast('✅ 신호 복구 — 제어권 반환');return 'none';}
+    return 'eject';
+  }
+  return 'none';
+}
+function deliverSuccess(){
+  ball.position.set(DELIVER_W.x,0.13,DELIVER_W.z);ball.userData.vy=0;
+  ballDlvUntil=simT+1.4;dlvFlash=1;
+  showToast('📦 음영 구역 배달 완료!');
+  missionEvent('deliver');
+}
+
+/* ════════════════ 지지면 충돌 (공이 구조물 속으로 가라앉지 않게) ════════════════ */
+var _fl=new THREE.Vector3();
+function supportHeightAt(x,z){
+  var s=0;
+  if(Math.hypot(x-MAT_PAD.x,z-MAT_PAD.z)<0.57)s=Math.max(s,0.05);          // 재료 패드
+  if(Math.hypot(x-ZONE_C.x,z-ZONE_C.z)<0.36)s=Math.max(s,0.05);            // 배달 패드
+  if(Math.hypot(x-SOCKET_BASE.x,z-SOCKET_BASE.z)<0.37)s=Math.max(s,0.61);  // 조립 소켓 받침
+  if(Math.abs(x-cart.position.x)<0.3&&Math.abs(z-TRACK_Z)<0.27)s=Math.max(s,0.30); // 무빙 카트(동적)
+  var c=Math.cos(robot.rotation.y),sn=Math.sin(robot.rotation.y);          // 로봇 차체(동적)
+  var dx=x-robot.position.x,dz=z-robot.position.z;
+  var lx=dx*c-dz*sn,lz=dx*sn+dz*c;
+  if(Math.abs(lx)<0.62&&Math.abs(lz)<0.47)s=Math.max(s,0.53);
+  _fl.set(x,0,z);                                                          // 공장 구조물(정적)
+  factory.worldToLocal(_fl);
+  var fx=_fl.x,fz=_fl.z;
+  if(Math.abs(fx)<1.85&&Math.abs(fz)<1.45)s=Math.max(s,2.36);              // 지붕
+  if(Math.hypot(fx-2.55,fz+0.9)<0.55)s=Math.max(s,1.9);                    // 사일로
+  if(fx>0.6&&fx<2.5&&Math.abs(fz)<0.33)s=Math.max(s,0.62);                 // 투입 컨베이어
+  if(Math.abs(fx+1.1)<0.33&&fz>1.1&&fz<2.8)s=Math.max(s,0.62);             // 배출 컨베이어
+  if(Math.hypot(fx+1.1,fz-3.2)<0.64)s=Math.max(s,0.05);                    // 배출 패드
+  return s;
+}
+
+/* 공 위치 비콘 — 들고 있지 않을 때 위치를 빛기둥으로 표시 */
+var ballBeam=new THREE.Mesh(new THREE.CylinderGeometry(0.015,0.015,2.2,8),
+  new THREE.MeshBasicMaterial({color:0xB392F9,transparent:true,opacity:0.2}));
+ballBeam.visible=false;scene.add(ballBeam);
+
+
+/* ════════════════ 자동화 공장 ════════════════ */
+var factory=new THREE.Group();
+factory.position.set(-5.5,0,-3.8);
+factory.rotation.y=Math.atan2(5.5,3.8);
+scene.add(factory);
+
+var fBody=box(3.4,2.2,2.6,MAT.fac);fBody.position.y=1.1;factory.add(fBody);
+var fRoof=box(3.7,0.16,2.9,MAT.facDark);fRoof.position.y=2.28;factory.add(fRoof);
+[[-1.0,-0.6],[0,-0.6],[1.0,-0.6]].forEach(function(p){
+  var v=box(0.34,0.26,0.34,MAT.facDark);v.position.set(p[0],2.49,p[1]);factory.add(v);
+  var vt=box(0.4,0.05,0.4,MAT.steel);vt.position.set(p[0],2.64,p[1]);factory.add(vt);
+});
+[[-0.95],[0],[0.95]].forEach(function(p){
+  var win=new THREE.Mesh(new THREE.BoxGeometry(0.55,0.42,0.05),
+    new THREE.MeshBasicMaterial({color:0x2E4A56}));
+  win.position.set(p[0],1.55,1.32);factory.add(win);
+  var bar=box(0.6,0.05,0.07,MAT.facDark);bar.position.set(p[0],1.55,1.33);factory.add(bar);
+});
+for(var hzI=0;hzI<10;hzI++){
+  var hm=box(0.3,0.16,0.04,hzI%2?MAT.hazardY:MAT.facDark);
+  hm.position.set(-1.5+hzI*0.33,0.1,1.32);factory.add(hm);
+}
+var fChim=cyl(0.2,1.1,MAT.facDark);fChim.position.set(-1.3,2.7,-0.85);factory.add(fChim);
+var chimBand=cyl(0.22,0.12,MAT.hazardY);chimBand.position.set(-1.3,3.1,-0.85);factory.add(chimBand);
+var puffs=[];
+for(var pi=0;pi<3;pi++){
+  var puff=new THREE.Mesh(new THREE.SphereGeometry(0.14,10,8),
+    new THREE.MeshBasicMaterial({color:0x92A0B5,transparent:true,opacity:0}));
+  puff.position.set(-1.3,3.3,-0.85);factory.add(puff);
+  puffs.push({m:puff,ph:pi/3});
+}
+var silo=cyl(0.5,1.9,MAT.steel);silo.position.set(2.55,0.95,-0.9);factory.add(silo);
+var siloTop=cone(0.5,0.45,MAT.facDark);siloTop.position.set(2.55,2.12,-0.9);factory.add(siloTop);
+[[2.25,-1.2],[2.85,-1.2],[2.25,-0.6],[2.85,-0.6]].forEach(function(p){
+  var lg=box(0.06,0.5,0.06,MAT.facDark);lg.position.set(p[0],0.25,p[1]);factory.add(lg);
+});
+var pipe1=cyl(0.07,1.4,MAT.steel);pipe1.rotation.z=Math.PI/2;pipe1.position.set(2.0,1.8,-0.9);factory.add(pipe1);
+var pipe2=cyl(0.07,1.0,MAT.steel);pipe2.rotation.x=Math.PI/2;pipe2.position.set(1.3,1.8,-0.4);factory.add(pipe2);
+var elbowS=new THREE.Mesh(new THREE.SphereGeometry(0.09,12,10),MAT.steel);
+elbowS.position.set(1.3,1.8,-0.9);factory.add(elbowS);
+var twrPole=cyl(0.03,0.3,MAT.steel);twrPole.position.set(1.45,2.45,0.9);factory.add(twrPole);
+var twrG=new THREE.MeshBasicMaterial({color:0x7BD88F});
+var twrA=new THREE.MeshBasicMaterial({color:0x4A3A1F});
+var tG=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.1,16),twrG);tG.position.set(1.45,2.62,0.9);factory.add(tG);
+var tA=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.1,16),twrA);tA.position.set(1.45,2.73,0.9);factory.add(tA);
+var tRm=new THREE.MeshBasicMaterial({color:0x4A1F1F});
+var tR=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.1,16),tRm);tR.position.set(1.45,2.84,0.9);factory.add(tR);
+
+function makeConveyor(parent,cx,cy,cz,len,alongZ){
+  var g=new THREE.Group();g.position.set(cx,cy,cz);
+  if(alongZ)g.rotation.y=Math.PI/2;
+  parent.add(g);
+  var frame=box(len,0.07,0.5,MAT.facDark);g.add(frame);
+  var belt=box(len-0.06,0.03,0.42,MAT.belt);belt.position.y=0.05;g.add(belt);
+  var side1=box(len,0.12,0.04,MAT.steel);side1.position.set(0,0.06,0.25);g.add(side1);
+  var side2=box(len,0.12,0.04,MAT.steel);side2.position.set(0,0.06,-0.25);g.add(side2);
+  var rollers=[];
+  for(var r=-1;r<=1;r++){
+    var ro=cyl(0.06,0.54,MAT.steel,14);ro.rotation.x=Math.PI/2;
+    ro.position.set(r*len*0.35,-0.08,0);g.add(ro);rollers.push(ro);
+  }
+  [[len*0.4],[-len*0.4]].forEach(function(p){
+    var lg1=box(0.05,cy-0.1,0.05,MAT.facDark);lg1.position.set(p[0],-(cy)/2,0.2);g.add(lg1);
+    var lg2=box(0.05,cy-0.1,0.05,MAT.facDark);lg2.position.set(p[0],-(cy)/2,-0.2);g.add(lg2);
+  });
+  var stripes=[];
+  for(var s=0;s<5;s++){
+    var st=box(0.05,0.015,0.4,MAT.accent);st.position.y=0.075;g.add(st);
+    stripes.push({m:st,ph:s/5});
+  }
+  return {g:g,rollers:rollers,stripes:stripes,len:len};
+}
+var convIn=makeConveyor(factory,1.55,0.55,0,1.7,false);
+var convOut=makeConveyor(factory,-1.1,0.55,1.95,1.6,true);
+var openIn=box(0.08,0.55,0.6,MAT.facDark);openIn.position.set(1.71,0.6,0);factory.add(openIn);
+var openOut=box(0.7,0.55,0.08,MAT.facDark);openOut.position.set(-1.1,0.6,1.31);factory.add(openOut);
+
+var hopper=new THREE.Group();hopper.position.set(2.25,0,0);factory.add(hopper);
+[[-0.3,0],[0.3,0]].forEach(function(p){
+  var m=box(0.06,0.45,0.7,MAT.steel);m.position.set(p[0],1.05,p[1]);hopper.add(m);
+});
+[[0,-0.32],[0,0.32]].forEach(function(p){
+  var m=box(0.66,0.45,0.06,MAT.steel);m.position.set(p[0],1.05,p[1]);hopper.add(m);
+});
+var inRing=new THREE.Mesh(new THREE.TorusGeometry(0.34,0.02,10,40),
+  new THREE.MeshBasicMaterial({color:0x53D7E0,transparent:true,opacity:0.9}));
+inRing.rotation.x=Math.PI/2;inRing.position.set(0,1.35,0);hopper.add(inRing);
+
+var pressBay=box(1.1,1.25,0.1,MAT.facDark);pressBay.position.set(0.35,0.78,1.31);factory.add(pressBay);
+var pressFrameL=box(0.1,1.2,0.3,MAT.steel);pressFrameL.position.set(-0.1,0.75,1.18);factory.add(pressFrameL);
+var pressFrameR=box(0.1,1.2,0.3,MAT.steel);pressFrameR.position.set(0.8,0.75,1.18);factory.add(pressFrameR);
+var pressTopBar=box(1.0,0.12,0.3,MAT.steel);pressTopBar.position.set(0.35,1.4,1.18);factory.add(pressTopBar);
+var anvil=box(0.6,0.18,0.4,MAT.facDark);anvil.position.set(0.35,0.32,1.18);factory.add(anvil);
+var piston=cyl(0.07,0.5,MAT.steel);piston.position.set(0.35,1.15,1.18);factory.add(piston);
+var pressHead=box(0.5,0.2,0.36,MAT.accent);pressHead.position.set(0.35,0.95,1.18);factory.add(pressHead);
+var PRESS_TOP=0.95,PRESS_BOT=0.52;
+
+var outPadLocal=new THREE.Vector3(-1.1,0,3.2);
+var outPad=cyl(0.62,0.05,MAT.facDark,36);outPad.position.copy(outPadLocal);outPad.position.y=0.025;
+factory.add(outPad);
+var outRing=new THREE.Mesh(new THREE.TorusGeometry(0.62,0.018,10,48),
+  new THREE.MeshBasicMaterial({color:0xFFB454,transparent:true,opacity:0.7}));
+outRing.rotation.x=Math.PI/2;outRing.position.copy(outPadLocal);outRing.position.y=0.06;
+factory.add(outRing);
+
+scene.updateMatrixWorld(true);
+var INPUT_W=hopper.localToWorld(new THREE.Vector3(0,1.2,0));
+var IN_START_W=factory.localToWorld(new THREE.Vector3(2.25,0.66,0));
+var IN_END_W=factory.localToWorld(new THREE.Vector3(0.85,0.66,0));
+var OUT_START_W=factory.localToWorld(new THREE.Vector3(-1.1,0.68,1.4));
+var OUT_END_W=factory.localToWorld(new THREE.Vector3(-1.1,0.68,2.7));
+var OUT_PAD_W=factory.localToWorld(outPadLocal.clone().setY(PROD_S/2));
+var SPARK_W=factory.localToWorld(new THREE.Vector3(0.35,0.5,1.18));
+var FACTORY_C=factory.position.clone();
+
+/* ════════════════ 물체 ════════════════ */
+var ballMat=new THREE.MeshStandardMaterial({color:0xB392F9,roughness:0.4,metalness:0.1,
+  emissive:0xB392F9,emissiveIntensity:0});
+var ball=new THREE.Mesh(new THREE.SphereGeometry(BALL_R,24,18),ballMat);
+ball.castShadow=true;ball.userData={vy:0,floorY:BALL_R};
+scene.add(ball);
+function spawnMaterial(){
+  scene.attach(ball);
+  ball.visible=true;
+  ball.position.set(MAT_PAD.x,BALL_R+0.05,MAT_PAD.z);
+  ball.userData.vy=0;
+}
+spawnMaterial();
+var procBall=new THREE.Mesh(new THREE.SphereGeometry(BALL_R,18,14),
+  new THREE.MeshStandardMaterial({color:0xB392F9,roughness:0.4}));
+procBall.castShadow=true;procBall.visible=false;scene.add(procBall);
+
+var products=[],prodCount=0;
+function spawnProduct(){
+  prodCount++;
+  var pmInst=new THREE.MeshStandardMaterial({color:0xFFD27A,roughness:0.25,metalness:0.7,
+    emissive:0xFFB454,emissiveIntensity:0.05});
+  var p=box(PROD_S,PROD_S,PROD_S,pmInst);
+  p.userData={vy:0,floorY:PROD_S/2,slide:0,slot:prodCount-1};
+  p.position.copy(OUT_START_W);
+  scene.add(p);
+  products.push(p);
+  document.getElementById('rCount').textContent=prodCount+'개';
+}
+function getOutSlot(idx){
+  var row=idx%3,col=Math.floor(idx/3)%3;
+  var right=new THREE.Vector3(1,0,0).applyQuaternion(factory.quaternion);
+  var fwd=new THREE.Vector3(0,0,1).applyQuaternion(factory.quaternion);
+  return OUT_PAD_W.clone()
+    .add(right.multiplyScalar((row-1)*0.3))
+    .add(fwd.multiplyScalar((col-1)*-0.3));
+}
+
+var held=null,gripOpen=true;
+var GRAB_RANGE=0.42;
+function grabbables(){
+  var arr=[];
+  if(ball.visible&&held!==ball)arr.push(ball);
+  for(var i=0;i<products.length;i++)
+    if(products[i]!==held&&products[i].userData.slide>=1)arr.push(products[i]);
+  return arr;
+}
+function nearestGrabbable(){
+  var eeW=getEEWorld(),best=null,bd=GRAB_RANGE;
+  var arr=grabbables();
+  for(var i=0;i<arr.length;i++){
+    var wp=arr[i].getWorldPosition(new THREE.Vector3());
+    var d=eeW.distanceTo(wp);
+    if(d<bd){bd=d;best=arr[i];}
+  }
+  return best;
+}
+
+/* ════════════════ 스파크 ════════════════ */
+var sparks=[];
+var sparkMat=new THREE.MeshBasicMaterial({color:0xFFD27A});
+function burstSparks(){
+  for(var i=0;i<7;i++){
+    var s=new THREE.Mesh(new THREE.BoxGeometry(0.035,0.035,0.035),sparkMat);
+    s.position.copy(SPARK_W);
+    scene.add(s);
+    sparks.push({m:s,v:new THREE.Vector3((Math.random()-0.5)*2.4,Math.random()*2.2+0.6,(Math.random()-0.5)*2.4),life:0.45});
+  }
+}
+function updateSparks(dt){
+  for(var i=sparks.length-1;i>=0;i--){
+    var s=sparks[i];
+    s.life-=dt;
+    if(s.life<=0){scene.remove(s.m);sparks.splice(i,1);continue;}
+    s.v.y-=9.8*dt;
+    s.m.position.addScaledVector(s.v,dt);
+    s.m.scale.setScalar(Math.max(0.2,s.life/0.45));
+  }
+}
+
+/* ════════════════ 공장 상태기계 ════════════════ */
+var fac={state:'idle',t:0,DUR:2.3,stamped:[false,false,false]};
+function facIntake(){
+  ball.visible=false;scene.attach(ball);
+  fac.state='processing';fac.t=0;fac.stamped=[false,false,false];
+  procBall.visible=true;procBall.position.copy(IN_START_W);
+  showToast('재료 투입 완료 — 가공 중…');
+}
+function updateFactory(dt,simT){
+  var facEl=document.getElementById('rFac');
+  var processing=fac.state==='processing';
+  var beltSpd=processing?0.9:0.12;
+  [convIn,convOut].forEach(function(cv){
+    for(var r=0;r<cv.rollers.length;r++)cv.rollers[r].rotation.y-=dt*beltSpd*8;
+    for(var s=0;s<cv.stripes.length;s++){
+      var st=cv.stripes[s];
+      var u=(simT*beltSpd*0.5+st.ph)%1;
+      st.m.position.x=cv.len/2-0.1-u*(cv.len-0.2);
+    }
+  });
+  if(processing){
+    fac.t+=dt;
+    var pr=Math.min(1,fac.t/fac.DUR);
+    facEl.textContent='가공 중 '+Math.round(pr*100)+'%';
+    twrA.color.setHex(Math.sin(simT*10)>0?0xFFB454:0x4A3A1F);
+    twrG.color.setHex(0x2A4A33);
+    if(fac.t<0.9){
+      procBall.position.lerpVectors(IN_START_W,IN_END_W,fac.t/0.9);
+    }else{
+      procBall.visible=false;
+      var s=(fac.t-0.9)/1.4*3;
+      var f=s-Math.floor(s);
+      var down=Math.sin(Math.min(1,f*1.6)*Math.PI);
+      pressHead.position.y=PRESS_TOP-(PRESS_TOP-PRESS_BOT)*down;
+      piston.scale.y=1-(0.45*down);
+      piston.position.y=1.15-(0.22*down);
+      var idx=Math.floor(s);
+      if(idx<3&&f>0.28&&!fac.stamped[idx]){
+        fac.stamped[idx]=true;
+        burstSparks();
+      }
+    }
+    for(var i=0;i<puffs.length;i++){
+      var u2=(simT*0.5+puffs[i].ph)%1;
+      puffs[i].m.position.y=3.3+u2*0.95;
+      puffs[i].m.material.opacity=0.5*(1-u2);
+      puffs[i].m.scale.setScalar(0.7+u2*1.2);
+    }
+    if(pr>=1){
+      fac.state='idle';
+      pressHead.position.y=PRESS_TOP;piston.scale.y=1;piston.position.y=1.15;
+      for(var j=0;j<puffs.length;j++)puffs[j].m.material.opacity=0;
+      spawnProduct();
+      spawnMaterial();
+      showToast('완제품 #'+prodCount+' 생산! 재료가 보충되었습니다');
+      missionEvent('produce');
+    }
+  }else{
+    facEl.textContent='대기';
+    twrA.color.setHex(0x4A3A1F);
+    twrG.color.setHex(0x7BD88F);
+  }
+  for(var k=0;k<products.length;k++){
+    var p=products[k];
+    if(p.userData.slide<1){
+      p.userData.slide=Math.min(1,p.userData.slide+dt/1.1);
+      var u3=p.userData.slide;
+      if(u3<0.62){
+        p.position.lerpVectors(OUT_START_W,OUT_END_W,u3/0.62);
+      }else{
+        var v=(u3-0.62)/0.38;
+        var slot=getOutSlot(p.userData.slot);
+        p.position.lerpVectors(OUT_END_W,slot,easeOut(v));
+        p.position.y=OUT_END_W.y*(1-v)+slot.y*v+Math.sin(v*Math.PI)*0.18;
+        p.rotation.y+=dt*3;
+      }
+    }
+  }
+  updateSparks(dt);
+}
+function easeOut(u){return 1-(1-u)*(1-u);}
+
+/* ════════════════ 메뉴 / 메뉴얼 ════════════════ */
+var menuPop=document.getElementById('menuPop');
+var manual=document.getElementById('manual');
+document.getElementById('menuBtn').addEventListener('click',function(e){
+  e.stopPropagation();
+  menuPop.classList.toggle('open');
+});
+window.addEventListener('click',function(e){
+  if(!menuPop.contains(e.target))menuPop.classList.remove('open');
+});
+function openManual(){
+  manual.classList.add('open');
+  menuPop.classList.remove('open');
+  if(window.mdStart)window.mdStart();
+}
+function closeManual(){
+  manual.classList.remove('open');
+  if(window.mdStop)window.mdStop();
+}
+document.getElementById('mManual').addEventListener('click',openManual);
+document.getElementById('manualClose').addEventListener('click',closeManual);
+document.getElementById('mHelp').addEventListener('click',function(){
+  document.getElementById('helpBox').classList.toggle('hidden');
+  menuPop.classList.remove('open');
+});
+
+/* ════════════════ 입력 ════════════════ */
+var keys={};
+window.addEventListener('keydown',function(e){
+  if(document.getElementById('mModal').classList.contains('open'))return;
+  if(manual.classList.contains('open')){
+    if(e.code==='Escape'||e.code==='KeyM')closeManual();
+    return;
+  }
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].indexOf(e.code)>=0)e.preventDefault();
+  if((auto.on||commFrozen)&&['KeyW','KeyA','KeyS','KeyD','KeyQ','KeyE','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].indexOf(e.code)>=0)return;
+  keys[e.code]=true;
+  if(e.code==='Space')toggleGrip();
+  if(e.code==='KeyM')openManual();
+});
+window.addEventListener('keyup',function(e){keys[e.code]=false;});
+
+function toggleGrip(){
+  if(held){
+    var wp=held.getWorldPosition(new THREE.Vector3());
+    scene.attach(held);
+    held.userData.vy=0;
+    var wasBall=(held===ball);
+    held=null;gripOpen=true;
+    if(wasBall&&wp.distanceTo(INPUT_W)<0.5){
+      facIntake();
+    }else if(wasBall&&wp.distanceTo(SOCKET_W)<sockR){
+      if(eeSpeed>0.6){
+        missionDrop();
+        showToast('⚠ 너무 빠르게 꽂으려 했어요 — 멈춘 뒤 살짝 놓아주세요');
+      }else{
+        socketSuccess();
+      }
+    }else if(wasBall&&wp.distanceTo(CART_C)<0.30){
+      var relV=eeVel.clone().sub(cartVel).length();
+      if(cartSpd<0.4){
+        missionDrop();
+        showToast('⚠ 회차 구간(적재 금지) — 카트가 달리는 중에 올려야 해요');
+      }else if(relV>0.35){
+        missionDrop();
+        showToast('⚠ 미끄러짐! 상대속도 '+relV.toFixed(2)+'m/s — 카트와 같이 움직이며 놓아야 해요 (0.35 미만)');
+      }else{
+        cartSuccess();
+      }
+    }else if(wasBall&&wp.distanceTo(DELIVER_W)<0.35){
+      if(eeSpeed>0.8){
+        missionDrop();
+        showToast('⚠ 너무 빠르게 — 살짝 내려놓아 주세요');
+      }else{
+        deliverSuccess();
+      }
+    }else{
+      if(wasBall)missionDrop();
+      showToast('놓기');
+    }
+  }else{
+    var g=nearestGrabbable();
+    if(g){
+      wristG.attach(g);
+      g.position.copy(GRIP_PT);
+      g.rotation.set(0,0,0);
+      held=g;gripOpen=false;
+      showToast(g===ball?'재료 집기 성공 — 공장으로 운반하세요':'완제품 집기');
+      if(g===ball)missionEvent('grab');
+    }else{
+      gripOpen=!gripOpen;
+      showToast(gripOpen?'그리퍼 열림':'그리퍼 닫힘 (물체가 빛날 때 누르면 집습니다)');
+    }
+  }
+  document.getElementById('rGrip').textContent=held?'잡는 중':(gripOpen?'열림':'닫힘');
+}
+
+var toastT=null;
+function showToast(msg){
+  var el=document.getElementById('toast');
+  var mb=document.getElementById('mBanner');
+  var tb=document.querySelector('.topbar');
+  var base=(tb?tb.getBoundingClientRect().bottom+10:64);
+  el.style.top=(mb&&mb.classList.contains('show'))
+    ? (mb.getBoundingClientRect().bottom+10)+'px'
+    : base+'px';
+  el.textContent=msg;el.classList.add('show');
+  clearTimeout(toastT);
+  toastT=setTimeout(function(){el.classList.remove('show');},2200);
+}
+
+var dragging=false,lastX=0,lastY=0,pinchD=0;
+canvas.addEventListener('contextmenu',function(e){e.preventDefault();});
+canvas.addEventListener('mousedown',function(e){dragging=true;lastX=e.clientX;lastY=e.clientY;});
+window.addEventListener('mousemove',function(e){
+  if(dragging){
+    cam.theta-=(e.clientX-lastX)*0.005;
+    cam.phi-=(e.clientY-lastY)*0.005;
+  }
+  lastX=e.clientX;lastY=e.clientY;
+});
+window.addEventListener('mouseup',function(){dragging=false;});
+canvas.addEventListener('wheel',function(e){
+  e.preventDefault();
+  cam.dist*=(1+Math.sign(e.deltaY)*0.08);
+},{passive:false});
+canvas.addEventListener('touchstart',function(e){
+  if(e.touches.length===1){dragging=true;lastX=e.touches[0].clientX;lastY=e.touches[0].clientY;}
+  else if(e.touches.length===2){
+    pinchD=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+  }
+},{passive:true});
+canvas.addEventListener('touchmove',function(e){
+  e.preventDefault();
+  if(e.touches.length===1&&dragging){
+    cam.theta-=(e.touches[0].clientX-lastX)*0.005;
+    cam.phi-=(e.touches[0].clientY-lastY)*0.005;
+    lastX=e.touches[0].clientX;lastY=e.touches[0].clientY;
+  }else if(e.touches.length===2){
+    var d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+    if(pinchD>0)cam.dist*=pinchD/d;
+    pinchD=d;
+  }
+},{passive:false});
+canvas.addEventListener('touchend',function(){dragging=false;pinchD=0;});
+
+/* ════════════════ 터치 컨트롤 (모바일) ════════════════ */
+var tc={fwd:0,turn:0,ax:0,az:0,up:false,down:false};
+function dz(v){return Math.abs(v)<0.18?0:v;}
+function makeStick(baseId,knobId,onMove){
+  var base=document.getElementById(baseId);
+  var knob=document.getElementById(knobId);
+  var tid=null,R=42;
+  function setKnob(nx,ny){
+    knob.style.transform='translate(calc(-50% + '+(nx*R)+'px),calc(-50% + '+(ny*R)+'px))';
+  }
+  function posOf(t){
+    var r=base.getBoundingClientRect();
+    var nx=((t.clientX-r.left)/r.width)*2-1;
+    var ny=((t.clientY-r.top)/r.height)*2-1;
+    var m=Math.hypot(nx,ny);
+    if(m>1){nx/=m;ny/=m;}
+    return {x:nx,y:ny};
+  }
+  base.addEventListener('touchstart',function(e){
+    e.preventDefault();
+    var t=e.changedTouches[0];tid=t.identifier;
+    var p=posOf(t);setKnob(p.x,p.y);onMove(p.x,p.y);
+  },{passive:false});
+  base.addEventListener('touchmove',function(e){
+    e.preventDefault();
+    for(var i=0;i<e.changedTouches.length;i++){
+      var t=e.changedTouches[i];
+      if(t.identifier===tid){var p=posOf(t);setKnob(p.x,p.y);onMove(p.x,p.y);}
+    }
+  },{passive:false});
+  function stickEnd(e){
+    for(var i=0;i<e.changedTouches.length;i++){
+      if(e.changedTouches[i].identifier===tid){tid=null;setKnob(0,0);onMove(0,0);}
+    }
+  }
+  base.addEventListener('touchend',stickEnd);
+  base.addEventListener('touchcancel',stickEnd);
+}
+function holdBtn(id,onDn,onUp){
+  var b=document.getElementById(id);
+  function dn(e){e.preventDefault();onDn();}
+  function up(){onUp();}
+  b.addEventListener('touchstart',dn,{passive:false});
+  b.addEventListener('touchend',up);
+  b.addEventListener('touchcancel',up);
+  b.addEventListener('mousedown',dn);
+  window.addEventListener('mouseup',up);
+}
+if(isTouch){
+  makeStick('joyL','knobL',function(x,y){tc.turn=-x;tc.fwd=-y;});
+  makeStick('joyR','knobR',function(x,y){tc.az=x;tc.ax=-y;});
+  holdBtn('btnUp',function(){tc.up=true;},function(){tc.up=false;});
+  holdBtn('btnDown',function(){tc.down=true;},function(){tc.down=false;});
+  document.getElementById('btnGrab').addEventListener('touchstart',function(e){
+    e.preventDefault();
+    if(auto.on||commFrozen)return;
+    toggleGrip();
+  },{passive:false});
+}
+
+/* ════════════════ IK (그립 지점 기준) ════════════════ */
+function clamp1(v){return Math.max(-1,Math.min(1,v));}
+var L2E=L2+0.31; // 손목→그립 오프셋 포함 유효 길이: 그립이 정확히 타겟에 정렬됨
+function solveIK(p){
+  var yaw=Math.atan2(p.z,p.x)*-1;
+  var r=Math.hypot(p.x,p.z),h=p.y-SHOULDER_H;
+  var d=Math.hypot(r,h);
+  d=Math.max(Math.abs(L1-L2E)+0.05,Math.min(L1+L2E-0.05,d));
+  var a=Math.atan2(h,r);
+  var a2=Math.acos(clamp1((L1*L1+d*d-L2E*L2E)/(2*L1*d)));
+  var shoulder=a+a2;
+  var elbow=-(Math.PI-Math.acos(clamp1((L1*L1+L2E*L2E-d*d)/(2*L1*L2E))));
+  return {yaw:yaw,shoulder:shoulder,elbow:elbow};
+}
+
+/* 로봇 팔 로컬 ↔ 월드 — 행렬 갱신 시점과 무관하게 직접 계산 */
+function armL2W(l){
+  var c=Math.cos(robot.rotation.y),s=Math.sin(robot.rotation.y);
+  return new THREE.Vector3(
+    robot.position.x + l.x*c + l.z*s,
+    CH_TOP + l.y,
+    robot.position.z - l.x*s + l.z*c
+  );
+}
+function armW2L(w){
+  var c=Math.cos(robot.rotation.y),s=Math.sin(robot.rotation.y);
+  var dx=w.x-robot.position.x,dz=w.z-robot.position.z;
+  return new THREE.Vector3(dx*c - dz*s, w.y-CH_TOP, dx*s + dz*c);
+}
+
+/* ════════════════ 정책 실행 ════════════════ */
+var clock=new THREE.Clock();
+var simT=0,lastSample=0;
+var hist=[];
+function pushHist(t,p){
+  hist.push({t:t,p:p.clone()});
+  while(hist.length>0&&hist[0].t<t-1.2)hist.shift();
+}
+function targetAtPast(t){
+  if(hist.length===0)return targetL.clone();
+  for(var i=hist.length-1;i>=0;i--){if(hist[i].t<=t)return hist[i].p.clone();}
+  return hist[0].p.clone();
+}
+
+/* ════════════════ 학습 미션 시스템 ════════════════ */
+var FIG_GRID='<div class="mm-fig"><svg viewBox="0 0 440 120">'+
+ '<g fill="#39455A">'+
+ '<circle cx="30" cy="25" r="3"/><circle cx="85" cy="25" r="3"/><circle cx="140" cy="25" r="3"/><circle cx="195" cy="25" r="3"/><circle cx="250" cy="25" r="3"/><circle cx="305" cy="25" r="3"/><circle cx="360" cy="25" r="3"/><circle cx="415" cy="25" r="3"/>'+
+ '<circle cx="30" cy="65" r="3"/><circle cx="85" cy="65" r="3"/><circle cx="140" cy="65" r="3"/><circle cx="250" cy="65" r="3"/><circle cx="305" cy="65" r="3"/><circle cx="360" cy="65" r="3"/><circle cx="415" cy="65" r="3"/>'+
+ '<circle cx="30" cy="105" r="3"/><circle cx="85" cy="105" r="3"/><circle cx="140" cy="105" r="3"/><circle cx="195" cy="105" r="3"/><circle cx="250" cy="105" r="3"/><circle cx="305" cy="105" r="3"/><circle cx="360" cy="105" r="3"/><circle cx="415" cy="105" r="3"/>'+
+ '</g>'+
+ '<circle cx="222" cy="48" r="7" fill="none" stroke="#53D7E0" stroke-width="2"/>'+
+ '<circle cx="222" cy="48" r="2" fill="#53D7E0"/>'+
+ '<line x1="216" y1="53" x2="200" y2="61" stroke="#FF5D5D" stroke-width="1.5" stroke-dasharray="3 3"/>'+
+ '<circle cx="195" cy="65" r="6" fill="#FFB454"/>'+
+ '</svg><div class="cap">내 입력(청록)이 어디에 있든, 팔(주황)은 가장 가까운 격자점으로만 갑니다</div></div>';
+var FIG_STAIR='<div class="mm-fig"><svg viewBox="0 0 440 130">'+
+ '<path d="M20,95 C90,30 150,30 220,65 S360,105 420,45" fill="none" stroke="#53D7E0" stroke-width="2"/>'+
+ '<path d="M20,95 L20,72 L75,72 L75,42 L130,42 L130,55 L185,55 L185,62 L240,62 L240,76 L295,76 L295,88 L350,88 L350,62 L420,62" fill="none" stroke="#FFB454" stroke-width="2.5"/>'+
+ '<text x="24" y="20" fill="#53D7E0" font-size="11" font-family="IBM Plex Mono">내가 움직인 목표</text>'+
+ '<text x="270" y="122" fill="#FFB454" font-size="11" font-family="IBM Plex Mono">팔의 실제 경로 (토큰 한 칸씩)</text>'+
+ '</svg><div class="cap">계단의 한 단 = 토큰 하나. 단과 단 사이엔 멈춰서 기다립니다</div></div>';
+var FIG_SPLIT='<div class="mm-fig"><svg viewBox="0 0 440 130">'+
+ '<line x1="220" y1="12" x2="220" y2="118" stroke="#27303F"/>'+
+ '<path d="M20,90 C60,35 110,35 200,70" fill="none" stroke="#53D7E0" stroke-width="1.6"/>'+
+ '<path d="M20,90 L20,65 L65,65 L65,42 L110,42 L110,58 L155,58 L155,68 L200,68" fill="none" stroke="#FFB454" stroke-width="2.4"/>'+
+ '<path d="M240,90 C280,35 330,35 420,70" fill="none" stroke="#53D7E0" stroke-width="1.6"/>'+
+ '<path d="M240,90 C280,37 330,37 420,71" fill="none" stroke="#7BD88F" stroke-width="2.4"/>'+
+ '<text x="24" y="116" fill="#FFB454" font-size="11" font-family="IBM Plex Mono">Mk.1 — 계단</text>'+
+ '<text x="244" y="116" fill="#7BD88F" font-size="11" font-family="IBM Plex Mono">Mk.3 — 곡선 밀착</text>'+
+ '</svg><div class="cap">같은 목표(청록), 다른 정책 — 오차의 차이가 곧 정밀도의 차이</div></div>';
+var FIG_RTC='<div class="mm-fig"><svg viewBox="0 0 440 130">'+
+ '<line x1="20" y1="70" x2="420" y2="70" stroke="#27303F" stroke-width="1.5"/>'+
+ '<polygon points="420,70 410,65 410,75" fill="#27303F"/>'+
+ '<circle cx="200" cy="70" r="7" fill="#FF5D5D"/>'+
+ '<text x="200" y="98" fill="#FF5D5D" font-size="11" text-anchor="middle" font-family="IBM Plex Mono">로봇이 본 위치 (0.35초 전)</text>'+
+ '<circle cx="340" cy="70" r="8" fill="none" stroke="#53D7E0" stroke-width="2"/>'+
+ '<text x="340" y="44" fill="#53D7E0" font-size="11" text-anchor="middle" font-family="IBM Plex Mono">지금 실제 목표</text>'+
+ '<line x1="210" y1="70" x2="318" y2="70" stroke="#7BD88F" stroke-width="2" stroke-dasharray="5 4"/>'+
+ '<circle cx="326" cy="70" r="6" fill="#FFB454"/>'+
+ '<text x="300" y="98" fill="#7BD88F" font-size="11" text-anchor="middle" font-family="IBM Plex Mono" dy="14">RTC: 움직임을 예측해 당김 →</text>'+
+ '</svg><div class="cap">지연을 없앨 수 없으니, 0.35초 뒤를 예측해서 미리 명령합니다</div></div>';
+
+var FIG_SYS='<div class="mm-fig"><svg viewBox="0 0 440 130">'+
+ '<rect x="20" y="35" width="120" height="56" rx="10" fill="#1C2433" stroke="#39455A"/>'+
+ '<text x="80" y="58" fill="#E9EDF4" font-size="12" text-anchor="middle" font-family="IBM Plex Sans KR">지금까지</text>'+
+ '<text x="80" y="78" fill="#92A0B5" font-size="11" text-anchor="middle" font-family="IBM Plex Sans KR">계획 = 사람 🧠</text>'+
+ '<line x1="140" y1="63" x2="170" y2="63" stroke="#92A0B5" stroke-width="1.5"/>'+
+ '<rect x="250" y="35" width="170" height="56" rx="10" fill="#1C2433" stroke="#B392F9"/>'+
+ '<text x="335" y="58" fill="#B392F9" font-size="12" text-anchor="middle" font-family="IBM Plex Sans KR">자율이 되려면</text>'+
+ '<text x="335" y="78" fill="#92A0B5" font-size="11" text-anchor="middle" font-family="IBM Plex Sans KR">계획(System 2)이 로봇 안에</text>'+
+ '<text x="210" y="68" fill="#FF5D5D" font-size="16" text-anchor="middle">?</text>'+
+ '</svg><div class="cap">손(행동)은 완성됐는데, 머리(계획)가 없으면 혼자선 아무것도 못 해요</div></div>';
+var FIG_CLOUD='<div class="mm-fig"><svg viewBox="0 0 440 130">'+
+ '<text x="20" y="28" fill="#92A0B5" font-size="11" font-family="IBM Plex Mono">☁ 클라우드 두뇌</text>'+
+ '<rect x="20" y="38" width="110" height="12" rx="3" fill="#39455A"/>'+
+ '<rect x="142" y="38" width="26" height="12" rx="3" fill="#FF5D5D" opacity=".5"/>'+
+ '<rect x="180" y="38" width="90" height="12" rx="3" fill="#39455A"/>'+
+ '<rect x="282" y="38" width="26" height="12" rx="3" fill="#FF5D5D" opacity=".5"/>'+
+ '<rect x="320" y="38" width="100" height="12" rx="3" fill="#39455A"/>'+
+ '<text x="155" y="68" fill="#FF5D5D" font-size="10" text-anchor="middle" font-family="IBM Plex Mono">두절</text>'+
+ '<text x="295" y="68" fill="#FF5D5D" font-size="10" text-anchor="middle" font-family="IBM Plex Mono">두절</text>'+
+ '<text x="20" y="95" fill="#7BD88F" font-size="11" font-family="IBM Plex Mono">⚡ 온디바이스 두뇌 (1-bit 경량화)</text>'+
+ '<rect x="20" y="103" width="400" height="12" rx="3" fill="#2A4A33"/>'+
+ '<rect x="20" y="103" width="400" height="12" rx="3" fill="none" stroke="#7BD88F" stroke-width="1"/>'+
+ '</svg><div class="cap">네트워크는 끊겨도, 몸 안의 두뇌는 끊기지 않습니다</div></div>';
+
+var FIG_TRACK='<div class="mm-fig"><svg viewBox="0 0 440 130">'+
+ '<line x1="20" y1="104" x2="420" y2="104" stroke="#27303F" stroke-width="2"/>'+
+ '<path d="M20,60 C90,30 170,30 240,55 S380,95 420,70" fill="none" stroke="#53D7E0" stroke-width="2"/>'+
+ '<path d="M20,60 L20,46 L80,46 L80,38 L140,38 L140,46 L200,46 L200,55 L260,55 L260,70 L320,70 L320,84 L380,84" fill="none" stroke="#FFB454" stroke-width="2.5"/>'+
+ '<circle cx="330" cy="77" r="8" fill="none" stroke="#53D7E0" stroke-width="2"/>'+
+ '<text x="24" y="22" fill="#53D7E0" font-size="11" font-family="IBM Plex Mono">움직이는 카트의 경로</text>'+
+ '<text x="240" y="122" fill="#FFB454" font-size="11" font-family="IBM Plex Mono">계단식 팔 — 항상 반 박자 늦음</text>'+
+ '</svg><div class="cap">표적이 움직이면, 띄엄띄엄 행동은 영원히 따라잡지 못합니다</div></div>';
+
+var MISSIONS=[
+ {era:0,no:1,type:'produce',title:'미션 1 — 첫 출근',
+  goal:'보라 공을 집어 공장 투입구(청록 링)에 넣고, 완제품 1개!',
+  timed:true,unlock:0,svg:FIG_STAIR,
+  brief:'<p>팔이 뚝뚝 끊겼지만 어떻게든 됐죠? <b>투입구가 크니까요.</b> 2022년 로봇(RT-1·RT-2)은 행동을 토큰으로 쪼개 0.4초에 한 칸씩 내보냈어요. 큰 작업엔 충분했습니다. 그런데 사장님이 새 주문을 받아왔네요…</p>'},
+ {era:0,no:2,type:'socket',socketR:0.25,wall:true,failAfter:45,
+  title:'미션 2 — 미니게임 ①: 정밀 조립',
+  goal:'공을 조립 소켓(작은 보라 링)에 정확히 꽂아주세요 — 45초',
+  timed:true,unlock:1,svg:FIG_GRID,
+  brief:'<p>안 되는 게 정상이에요. 팔은 <b>0.5m 격자점 위치로만</b> 갈 수 있는데, 격자는 공간에 고정되어 있고, 소켓은 일부러 격자점들 한가운데(최근접 34cm)에 놓여 있어요. <b>이 로봇의 행동 사전엔 "소켓 위"라는 단어가 없는 셈이죠.</b> 2023~24년, 로봇 학계가 "행동을 더 촘촘하게"를 외친 이유입니다.</p>'},
+ {era:1,no:3,type:'socket',socketR:0.25,compare:1,
+  title:'미션 3 — 신형 도입: Mk.2',
+  goal:'같은 소켓, 같은 작업 — 이번엔 Mk.2(격자 0.2m)로!',
+  timed:true,unlock:1,
+  brief:'<p>22종 로봇의 데이터를 긁어모아 학습한 범용 정책(Octo·OpenVLA) — 행동이 <b>2.5배 촘촘해졌어요(0.5→0.2m).</b> 같은 소켓이 이제 닿습니다. 그런데 공장에 새 설비가 들어왔어요. 멈추지 않고 달리는 <b>무빙 카트</b>…</p>'},
+ {era:1,no:4,type:'cart',wall:true,failAfter:50,
+  title:'미션 4 — 미니게임 ②: 무빙 카트',
+  goal:'달리는 카트에 적재! 팔을 카트 근처에 대면 추적을 시도해요 (50초)',
+  timed:true,unlock:2,svg:FIG_TRACK,
+  brief:'<p>추적을 <b>시도는</b> 했죠 — 그런데 행동이 8Hz 격자로 끊겨, 따라가려 할수록 점프-정지만 반복하며 <b>속도를 영영 못 맞춥니다.</b> 닿는 순간엔 이미 카트가 가버렸어요. 빨래 개기, 물건 건네받기, 움직이는 라인 작업… 2024년의 로봇이 멈춰 선 지점입니다.</p>'},
+ {era:2,no:5,type:'cart',compare:3,
+  title:'미션 5 — 흐르는 손',
+  goal:'Mk.3로 다시 — 팔을 카트 옆에 대고, 상대속도 ✓가 뜨면 살짝 놓기!',
+  timed:true,unlock:2,
+  quiz:{q:'움직이는 카트를 Mk.2가 못 따라간 진짜 이유는?',
+   opts:['모터 출력이 부족해서','행동이 띄엄띄엄 끊겨 속도를 맞출 수 없어서','카트가 너무 작아서'],ans:1,
+   expl:'이산 행동은 점프-정지의 반복이라 "함께 움직이기"가 안 돼요. π0의 flow matching은 1초치 행동을 연속 곡선으로 만들어 움직이는 세계를 따라갑니다. (메뉴얼 STAGE 02)'},
+  brief:'<p>격자가 사라지니 <b>속도를 맞춰 함께 움직일 수 있어요.</b> 멈춘 세계(소켓)에서 움직이는 세계(카트)로 — 이게 연속 행동의 진짜 의미입니다. 그러자 사장님이 묻습니다. <b>"이거 자동으로는 안 되나?"</b></p>'},
+ {era:2,no:6,type:'autofail',wall:true,auto:'fail',
+  title:'미션 6 — "자동으로 안 되나?"',
+  goal:'자율 모드가 켜집니다. 손 떼고 지켜보세요 — Mk.3가 혼자 해낼까요?',
+  unlock:3,svg:FIG_SYS,
+  brief:'<p>헤매다 멈췄죠. Mk.3의 손은 완벽하지만 <b>"뭘 먼저 할지, 어디로 갈지"를 모릅니다.</b> 지금까지 그 계획은 전부 당신(사람)이 했어요. 2025년, 로봇 안에 <b>계획하는 두뇌(System 2)</b>를 넣은 듀얼 시스템이 등장합니다 — GR00T N1, Gemini Robotics.</p>'},
+ {era:3,no:7,type:'produce',auto:'ok',cloud:true,
+  title:'미션 7 — 진짜 자율 (그런데…)',
+  goal:'Mk.4가 혼자 일합니다. 손 떼고 지켜보세요 — 그런데 자꾸 멈칫하죠?',
+  unlock:3,svg:FIG_CLOUD,
+  brief:'',
+  briefFn:function(){return '<p>혼자서 한 사이클을 해냈어요! 그런데 <b>클라우드가 '+cloud.count+'번 끊겨</b> 그때마다 로봇이 얼어붙었죠. Mk.4의 거대한 두뇌는 서버에 있거든요. 그리고 다음 주문지가 하필… <b>신호가 아예 안 터지는 곳</b>이네요.</p>';}},
+ {era:3,no:8,type:'deliver',wall:true,failAfter:50,
+  title:'미션 8 — 미니게임 ③: 음영 구역 배달',
+  goal:'재료를 빨간 원(통신 음영 구역) 안 배달 패드까지 — 직접 들고 들어가 보세요 (50초)',
+  timed:true,unlock:4,svg:FIG_CLOUD,
+  brief:'<p>구역에 들어서는 순간 <b>두뇌(클라우드)와의 연결이 끊겨</b> 로봇이 얼어붙고, 안전 모드가 강제로 끌어냈죠. 터널, 지하, 재난 현장 — <b>로봇이 가장 필요한 곳일수록 신호가 없습니다.</b> 답은 하나, 두뇌를 몸에 싣는 것. 1-bit 압축(BitVLA)이 그걸 가능하게 했어요.</p>'},
+ {era:4,no:9,type:'deliver',
+  title:'미션 9 — 두뇌를 싣다',
+  goal:'Mk.5(온디바이스)로 음영 구역 배달 완수 + 빨간 점도 관찰!',
+  timed:true,unlock:5,svg:FIG_RTC,
+  quiz:{q:'온디바이스(Mk.5)에도 0.35초 지연은 남아요. 그런데 왜 안 끊길까요?',
+   opts:['지연이 0이라서','RTC가 지연 동안의 움직임을 예측해 미리 명령하니까','클라우드가 더 빨라져서'],ans:1,
+   expl:'지연을 없애는 게 아니라 지연을 안고 달리는 설계예요. RTC는 0.35초 뒤를 예측해 행동을 이어붙입니다(빨간 점→주황 점). (메뉴얼 STAGE 04)'},
+  brief:'<p>음영 구역 한복판에서도 한 번도 안 끊겼죠. BitVLA의 <b>1-bit 압축</b>이 두뇌를 몸에 실었고, <b>RTC</b>가 남은 지연을 예측으로 메웠습니다. 2022년의 뚝뚝 끊기던 팔에서 여기까지 — 3년입니다.</p>'}
+];
+
+var mission={idx:-1,active:false,startT:0,drops:0,errSum:0,errT:0,records:{},unlocked:-1,freeView:false};
+
+/* ── 소켓 성공 ── */
+function socketSuccess(){
+  ball.position.copy(SOCKET_W);
+  ball.userData.vy=0;
+  ballSocketUntil=simT+1.4;
+  sockFlash=1;
+  showToast('🎯 소켓 결합 성공!');
+  missionEvent('socket');
+}
+
+/* ── 자율(AUTO) 모듈 ── */
+var auto={on:false,mode:'ok',phase:0,phaseT:0};
+var HOPPER_APPROACH=(function(){
+  var dir=INPUT_W.clone().sub(FACTORY_C);dir.y=0;dir.normalize();
+  var p=INPUT_W.clone();p.y=0;
+  return p.add(dir.multiplyScalar(1.45));
+})();
+function startAuto(mode){auto.on=true;auto.mode=mode;auto.phase=0;auto.phaseT=0;}
+function stopAuto(){auto.on=false;}
+function angNorm(a){while(a>Math.PI)a-=2*Math.PI;while(a<-Math.PI)a+=2*Math.PI;return a;}
+function clampTargetL(v){
+  v.y=Math.max(-0.32,Math.min(2.3,v.y));
+  var rd=Math.hypot(v.x,v.z),mR=L1+L2E-0.12;
+  if(rd>mR){v.x*=mR/rd;v.z*=mR/rd;}
+  if(rd<0.45){var s=0.45/Math.max(rd,1e-4);v.x*=s;v.z*=s;}
+  return v;
+}
+function autoStep(dt){
+  auto.phaseT+=dt;
+  var rx=robot.position.x,rz=robot.position.z;
+  function driveTo(p,stop){
+    var dx=p.x-rx,dz=p.z-rz;
+    var dist=Math.hypot(dx,dz);
+    var des=Math.atan2(-dz,dx);
+    var diff=angNorm(des-robot.rotation.y);
+    return {fwd:(Math.abs(diff)<0.5&&dist>stop)?1:0,
+            turn:Math.max(-1,Math.min(1,diff*3)),
+            done:dist<=stop};
+  }
+  var ctl={fwd:0,turn:0};
+  if(auto.mode==='fail'){
+    if(auto.phase===0){
+      var r0=driveTo({x:-1.5,z:6},0.6);ctl=r0;
+      if(r0.done||auto.phaseT>3.5){auto.phase=1;auto.phaseT=0;showToast('🤖 …재료가 어디지?');}
+    }else if(auto.phase===1){
+      ctl={fwd:0,turn:1};
+      targetL.set(1.2+Math.sin(auto.phaseT*3)*0.6,1.2,Math.cos(auto.phaseT*2.3)*0.8);
+      if(auto.phaseT>2.6){auto.phase=2;auto.phaseT=0;showToast('🤖 …뭘 해야 하더라?');}
+    }else if(auto.phase===2){
+      if(auto.phaseT>1.4){stopAuto();missionEvent('autofail');}
+    }
+    return ctl;
+  }
+  if(auto.phase===0){
+    targetL.set(1.6,1.0,0);
+    var r=driveTo(MAT_PAD,1.5);ctl=r;
+    if(r.done){auto.phase=1;auto.phaseT=0;showToast('🤖 재료 발견 — 집습니다');}
+  }else if(auto.phase===1){
+    var bl=armW2L(ball.position);
+    bl.y+=0.02;
+    targetL.copy(clampTargetL(bl));
+    if(!held&&getEEWorld().distanceTo(ball.position)<GRAB_RANGE-0.05){
+      wristG.attach(ball);ball.position.copy(GRIP_PT);ball.rotation.set(0,0,0);
+      held=ball;gripOpen=false;
+      document.getElementById('rGrip').textContent='잡는 중';
+      auto.phase=2;auto.phaseT=0;showToast('🤖 공장으로 이동');
+    }
+    if(auto.phaseT>7){auto.phase=0;auto.phaseT=0;}
+  }else if(auto.phase===2){
+    targetL.set(1.6,1.4,0);
+    var r2=driveTo(HOPPER_APPROACH,0.5);ctl=r2;
+    if(r2.done){auto.phase=3;auto.phaseT=0;}
+  }else if(auto.phase===3){
+    targetL.copy(clampTargetL(armW2L(INPUT_W)));
+    if(held&&getEEWorld().distanceTo(INPUT_W)<0.34){
+      scene.attach(held);held.userData.vy=0;held=null;gripOpen=true;
+      document.getElementById('rGrip').textContent='열림';
+      facIntake();
+      auto.phase=4;auto.phaseT=0;
+    }
+    if(auto.phaseT>8){auto.phase=2;auto.phaseT=0;}
+  }
+  /* phase 4: 생산 대기 — produce 이벤트가 미션을 끝냄 */
+  return ctl;
+}
+
+/* ── 클라우드 두절 모듈 ── */
+var cloud={active:false,frozen:0,next:0,count:0};
+function cloudTick(dt){
+  if(!cloud.active)return false;
+  if(cloud.frozen>0){
+    cloud.frozen-=dt;
+    if(cloud.frozen<=0)showToast('✅ 클라우드 재연결 — 작업 재개');
+    return cloud.frozen>0;
+  }
+  if(simT>=cloud.next){
+    cloud.frozen=1.5;cloud.count++;
+    cloud.next=simT+5.5+Math.random()*4;
+    showToast('⚠ 클라우드 연결 끊김 — 로봇 정지 ('+cloud.count+'회째)');
+    return true;
+  }
+  return false;
+}
+
+var mBanner=document.getElementById('mBanner');
+var mbTitle=document.getElementById('mbTitle');
+var mbGoal=document.getElementById('mbGoal');
+var mbTimer=document.getElementById('mbTimer');
+var mModal=document.getElementById('mModal');
+var mmBody=document.getElementById('mmBody');
+var mmActions=document.getElementById('mmActions');
+
+function layoutTopUI(){
+  var tb=document.querySelector('.topbar');
+  mBanner.style.top=(tb?tb.getBoundingClientRect().bottom+8:58)+'px';
+}
+layoutTopUI();
+window.addEventListener('resize',layoutTopUI);
+
+function startMission(i){
+  mission.idx=i;mission.active=true;mission.startT=simT;
+  mission.drops=0;mission.errSum=0;mission.errT=0;
+  var M=MISSIONS[i];
+  /* 배너를 먼저 띄우고 위치를 잡아야, 이어지는 토스트(setEra 팁)가 배너 아래로 배치됨 */
+  mbTitle.textContent='MISSION '+M.no+'/'+MISSIONS.length+' · '+ERAS[M.era].gen+(M.auto?' · 🤖 자율':'');
+  mbGoal.textContent=M.goal;
+  mbTimer.textContent='';
+  document.getElementById('mbGiveup').style.display=M.wall?'inline-block':'none';
+  mBanner.classList.add('show');
+  layoutTopUI();
+  setEra(M.era,true);
+  setSocketR(M.socketR||0.15);
+  zone.state='out';ballCartUntil=0;ballDlvUntil=0;ballZoneT=0;
+  stopAuto();
+  cloud.active=!!M.cloud;
+  if(cloud.active){cloud.count=0;cloud.frozen=0;cloud.next=simT+4;}
+  if(M.auto){
+    setTimeout(function(){
+      if(mission.active&&mission.idx===i){
+        startAuto(M.auto);
+        showToast('🤖 자율 모드 시작 — 손 떼고 지켜보세요');
+      }
+    },1200);
+  }
+  closeModal();
+}
+function missionDrop(){if(mission.active)mission.drops++;}
+function missionEvent(type){
+  if(!mission.active)return;
+  var M=MISSIONS[mission.idx];
+  if(M.type!==type)return;
+  completeMission(simT-mission.startT,false);
+}
+function wallHit(){
+  if(!mission.active)return;
+  completeMission(simT-mission.startT,true);
+}
+function completeMission(el,failed){
+  mission.active=false;
+  stopAuto();
+  cloud.active=false;
+  mBanner.classList.remove('show');
+  var M=MISSIONS[mission.idx];
+  var avgE=mission.errT>0?(mission.errSum/mission.errT)*100:0;
+  mission.records[mission.idx]={t:el,d:mission.drops,e:avgE,fail:failed};
+  if(M.unlock>mission.unlocked)mission.unlocked=M.unlock;
+  updateManualLocks();
+  showDebrief(M,el,avgE,failed);
+}
+function fmtT(t){return t.toFixed(1)+'초';}
+function showDebrief(M,el,avgE,failed){
+  var html;
+  if(failed){
+    html='<div class="mm-eyebrow" style="color:var(--bad)">WALL — 벽을 발견했습니다</div><h3>'+M.title+'</h3>'+
+      '<p><b>이건 실패가 아니라 발견이에요.</b> 이 로봇으로는 안 되는 일을 직접 확인한 거니까요 — 당시 연구자들이 그랬듯이.</p>';
+  }else{
+    html='<div class="mm-eyebrow">MISSION '+M.no+' CLEAR</div><h3>'+M.title+'</h3>';
+    if(M.wall){
+      html+='<p><b>해내셨네요!</b> 거의 불가능한 타이밍을 뚫으셨는데, 매번 이럴 순 없죠 — 그게 바로 다음 기술이 필요한 이유입니다.</p>';
+    }
+  }
+  if(M.timed&&!failed&&!M.auto){
+    html+='<div class="mm-stats">'+
+      '<div class="mm-stat"><div class="k">시간</div><div class="v">'+fmtT(el)+'</div></div>'+
+      '<div class="mm-stat"><div class="k">평균 팔 오차</div><div class="v">'+avgE.toFixed(0)+'cm</div></div>'+
+      '<div class="mm-stat"><div class="k">놓침</div><div class="v">'+mission.drops+'회</div></div></div>';
+  }
+  if(M.cloud){
+    html+='<div class="mm-stats">'+
+      '<div class="mm-stat"><div class="k">클라우드 끊김</div><div class="v" style="color:var(--bad)">'+cloud.count+'회</div></div>'+
+      '<div class="mm-stat"><div class="k">자율 사이클</div><div class="v win">완료</div></div></div>';
+  }
+  if(M.compare!==undefined&&mission.records[M.compare]&&!failed){
+    var pr=mission.records[M.compare];
+    var cur=mission.records[mission.idx];
+    if(pr.fail){
+      html+='<div class="mm-compare">같은 과제, 두 시대 — <b>이전 기체: '+Math.round(pr.t)+'초 동안 실패</b> → <b>지금: '+fmtT(cur.t)+' 만에 성공.</b> 기술이 벽을 넘는 순간을 직접 재현하셨어요.</div>';
+    }else{
+      var ratio=(pr.e/Math.max(cur.e,0.5)).toFixed(1);
+      html+='<div class="mm-compare">같은 과제 — 평균 팔 오차 <b>'+pr.e.toFixed(0)+'cm → '+cur.e.toFixed(0)+'cm ('+ratio+'배 정밀)</b>, 시간 '+fmtT(pr.t)+' → '+fmtT(cur.t)+'.</div>';
+    }
+  }
+  if(M.svg)html+=M.svg;
+  html+=(M.briefFn?M.briefFn():M.brief);
+  html+='<p style="font-size:13px;color:var(--mut)">📖 메뉴얼에 이 시대 해설이 열렸어요 (M 키)</p>';
+  mmBody.innerHTML=html;
+  mmActions.innerHTML='';
+  var nextBtn=document.createElement('button');
+  nextBtn.className='primary';
+  var isLast=mission.idx>=MISSIONS.length-1;
+  nextBtn.textContent=isLast?'수료 결과 보기':'다음 미션 →';
+  nextBtn.addEventListener('click',function(){isLast?showFinish():startMission(mission.idx+1);});
+  if(M.quiz){
+    nextBtn.disabled=true;
+    renderQuiz(M.quiz,nextBtn);
+  }
+  var freeBtn=document.createElement('button');
+  freeBtn.textContent='자유 탐색';
+  freeBtn.addEventListener('click',closeModal);
+  mmActions.appendChild(freeBtn);
+  mmActions.appendChild(nextBtn);
+  mModal.classList.add('open');
+}
+function renderQuiz(Q,nextBtn){
+  var wrap=document.createElement('div');wrap.className='mm-quiz';
+  wrap.innerHTML='<div class="q">✏️ 체크 퀴즈: '+Q.q+'</div>';
+  var expl=document.createElement('div');expl.className='expl';
+  expl.textContent='💡 '+Q.expl;
+  Q.opts.forEach(function(o,oi){
+    var b=document.createElement('button');b.className='opt';b.textContent=(oi+1)+'. '+o;
+    b.addEventListener('click',function(){
+      if(oi===Q.ans){b.classList.add('right');nextBtn.disabled=false;}
+      else b.classList.add('wrong');
+      expl.classList.add('show');
+    });
+    wrap.appendChild(b);
+  });
+  wrap.appendChild(expl);
+  mmBody.appendChild(wrap);
+}
+function showFinish(){
+  var rows='';
+  for(var fi=0;fi<MISSIONS.length;fi++){
+    var r=mission.records[fi];
+    if(!r)continue;
+    rows+='<tr><td>미션 '+MISSIONS[fi].no+' · '+ERAS[MISSIONS[fi].era].gen+'</td>'+
+      '<td>'+(r.fail?'<span style="color:var(--bad)">🧱 벽 발견</span>':'<b>'+fmtT(r.t)+'</b>')+'</td>'+
+      '<td>'+(r.fail?'—':r.e.toFixed(0)+'cm')+'</td><td>'+r.d+'회</td></tr>';
+  }
+  mmBody.innerHTML='<div class="mm-eyebrow">COURSE COMPLETE</div><h3>🎓 수료! 벽에 부딪히고, 넘으면서 왔습니다</h3>'+
+    '<table class="mm-records"><tr><th>미션 · 기체</th><th>결과</th><th>평균 오차</th><th>놓침</th></tr>'+rows+'</table>'+
+    '<p>격자의 벽 → 더 촘촘한 격자 → 격자를 버린 연속 행동 → 계획하는 두뇌 → 두뇌를 몸에 싣기. '+
+    '핵심 논문 14편이 <b>왜</b> 나왔는지를 벽에 부딪히며 익혔어요. 이제 메뉴얼 전체가 열려 있고, 시대를 자유롭게 오가며 실험할 수 있습니다.</p>';
+  mission.unlocked=5;mission.freeView=true;updateManualLocks();
+  mmActions.innerHTML='';
+  var fb=document.createElement('button');fb.className='primary';fb.textContent='자유 탐색 시작';
+  fb.addEventListener('click',closeModal);
+  mmActions.appendChild(fb);
+  mModal.classList.add('open');
+}
+function closeModal(){mModal.classList.remove('open');}
+function exitMissions(){
+  mission.active=false;mBanner.classList.remove('show');
+  stopAuto();cloud.active=false;
+  showToast('자유 탐색 모드 — 메뉴에서 언제든 미션을 다시 시작할 수 있습니다');
+}
+document.getElementById('mbGiveup').addEventListener('click',wallHit);
+
+/* 메뉴얼 단계 잠금 */
+var manualStages=[];
+function initManualLocks(){
+  manualStages=Array.prototype.slice.call(document.querySelectorAll('.manual .stage'));
+  manualStages.forEach(function(st){
+    var note=document.createElement('div');
+    note.className='lock-note';
+    note.textContent='🔒 해당 미션을 클리어하면 해설이 열립니다';
+    st.appendChild(note);
+  });
+  updateManualLocks();
+}
+function updateManualLocks(){
+  manualStages.forEach(function(st,si){
+    var locked=!mission.freeView&&si>mission.unlocked;
+    st.classList.toggle('locked',locked);
+  });
+}
+initManualLocks();
+document.getElementById('freeViewBtn').addEventListener('click',function(){
+  mission.freeView=true;updateManualLocks();
+  this.textContent='🔓 모든 해설이 열렸습니다';
+});
+document.getElementById('mMission').addEventListener('click',function(){
+  menuPop.classList.remove('open');
+  closeManual();
+  startMission(0);
+});
+document.getElementById('mbExit').addEventListener('click',exitMissions);
+
+/* 온보딩 (첫 화면) */
+var obStep=0;
+var OB=[
+ '<div class="mm-eyebrow">PHYSICAL AI 학습 시뮬레이터</div><h3>로봇 AI의 3년을 직접 몰아봅니다</h3>'+
+ '<p>카메라로 <b>보고</b>, 말을 <b>알아듣고</b>, 팔을 <b>움직이는</b> AI — 요즘 이걸 VLA라고 불러요. '+
+ '여기서는 같은 로봇에 2022년부터 2025년까지의 AI를 차례로 갈아끼우면서, 뭐가 얼마나 좋아졌는지 손으로 느껴봅니다.</p>',
+ (isTouch
+  ? '<div class="mm-eyebrow">조작법</div><h3>두 엄지로 조종해요</h3>'+
+    '<p><b>왼쪽 스틱</b> — 주행(앞뒤·회전)<br><b>오른쪽 스틱</b> — 팔 이동<br><b>▲ ▼</b> — 팔 높이<br><b>✊</b> — 집기/놓기 (공이 반짝일 때)<br><b>빈 화면 드래그</b> — 카메라 · <b>두 손가락</b> — 줌</p>'
+  : '<div class="mm-eyebrow">조작법</div><h3>키보드면 충분해요</h3>'+
+    '<p><b>주행</b> — W/S 앞뒤, A/D 회전<br><b>팔</b> — 방향키 + Q/E(높이)<br><b>집기/놓기</b> — 공이 반짝일 때 Space<br><b>카메라</b> — 마우스 드래그·휠</p>'+
+    '<p style="color:var(--mut);font-size:13px">잊어버려도 괜찮아요. 화면 오른쪽 아래에 항상 떠 있습니다.</p>'),
+ '<div class="mm-eyebrow">진행 방식</div><h3>벽에 부딪히는 게 목표예요</h3>'+
+ '<p>미션 9개를 순서대로 깹니다. 그중 몇 개는 <b>지금 로봇으로는 절대 안 되는 미션</b>이에요. '+
+ '그 벽에 부딪히는 순간이 — 새 기술이 <b>왜</b> 태어났는지를 이해하는 순간입니다. '+
+ '벽을 발견할 때마다 다음 세대 기체가 열리고, 같은 일을 다시 해보며 차이를 확인합니다.</p>'
+];
+function showOnboard(){
+  mmBody.innerHTML=OB[obStep];
+  mmActions.innerHTML='';
+  if(obStep<OB.length-1){
+    var skip=document.createElement('button');skip.textContent='건너뛰고 자유 탐색';
+    skip.addEventListener('click',function(){mission.freeView=true;updateManualLocks();closeModal();});
+    var nx=document.createElement('button');nx.className='primary';nx.textContent='다음';
+    nx.addEventListener('click',function(){obStep++;showOnboard();});
+    mmActions.appendChild(skip);mmActions.appendChild(nx);
+  }else{
+    var skip2=document.createElement('button');skip2.textContent='자유 탐색으로 시작';
+    skip2.addEventListener('click',function(){mission.freeView=true;updateManualLocks();closeModal();});
+    var go=document.createElement('button');go.className='primary';go.textContent='🎯 미션 1 시작';
+    go.addEventListener('click',function(){startMission(0);});
+    mmActions.appendChild(skip2);mmActions.appendChild(go);
+  }
+  mModal.classList.add('open');
+}
+showOnboard();
+
+function setEra(i,force){
+  if(!force&&mission.active&&i!==MISSIONS[mission.idx].era){
+    showToast('미션 진행 중에는 시대가 고정됩니다');
+    return;
+  }
+  era=i;
+  var E=ERAS[i];
+  buildSkin(i);
+  document.getElementById('rModel').textContent=E.model;
+  document.getElementById('rGen').textContent=E.gen;
+  document.getElementById('rHz').textContent=E.hz+(E.latency>0?' · 지연흡수':'');
+  var latEl=document.getElementById('rLat');
+  if(E.latency>0){latEl.textContent=Math.round(E.latency*1000)+'ms → RTC 보정';latEl.className='v ok';}
+  else{latEl.textContent='0 (가정)';latEl.className='v';}
+  var btns=document.querySelectorAll('.era-btn');
+  for(var b=0;b<btns.length;b++)btns[b].classList.toggle('on',+btns[b].dataset.era===i);
+  snapGrid.visible=E.grid>0;
+  ghostM.visible=!!E.rtc;
+  ghostL=null;
+  document.getElementById('ghostNote').style.display=E.rtc?'block':'none';
+  trailLen=0;trailGeo.setDrawRange(0,0);
+  showToast(E.tip);
+}
+var eraBtns=document.querySelectorAll('.era-btn');
+for(var i2=0;i2<eraBtns.length;i2++){
+  eraBtns[i2].addEventListener('click',function(){setEra(+this.dataset.era);});
+}
+setEra(0);
+
+/* ════════════════ 메인 루프 ════════════════ */
+var smoothErr=0,errTick=0;
+var prevEE=new THREE.Vector3(),eeVel=new THREE.Vector3(),eeSpeed=0;
+var trackLock=false;
+
+function animate(){
+  requestAnimationFrame(animate);
+  var dt=Math.min(0.05,clock.getDelta());
+  simT+=dt;
+  var E=ERAS[era];
+
+  var zoneSt=zoneTick(dt);
+  var frozen=cloudTick(dt)||zoneSt==='frozen';
+  commFrozen=frozen||zoneSt==='eject';
+  var fwd=0,turn=0;
+  if(frozen||zoneSt==='eject'){
+    /* 통신 두절/안전모드 — 수동·자율 제어 모두 정지 */
+  }else if(auto.on){
+    var actl=autoStep(dt);
+    fwd=actl.fwd;turn=actl.turn;
+  }else{
+    if(keys['KeyW'])fwd+=1;
+    if(keys['KeyS'])fwd-=1;
+    if(keys['KeyA'])turn+=1;
+    if(keys['KeyD'])turn-=1;
+    fwd+=dz(tc.fwd);turn+=dz(tc.turn);
+    if(fwd>1)fwd=1;else if(fwd<-1)fwd=-1;
+    if(turn>1)turn=1;else if(turn<-1)turn=-1;
+  }
+  robot.rotation.y+=turn*1.9*dt;
+  var SPD=2.4;
+  robot.position.x+=Math.cos(robot.rotation.y)*fwd*SPD*dt;
+  robot.position.z+=-Math.sin(robot.rotation.y)*fwd*SPD*dt;
+  robot.position.x=Math.max(-9.5,Math.min(9.5,robot.position.x));
+  robot.position.z=Math.max(-9.5,Math.min(9.5,robot.position.z));
+  var toFac=new THREE.Vector2(robot.position.x-FACTORY_C.x,robot.position.z-FACTORY_C.z);
+  if(toFac.length()<2.9){
+    toFac.normalize().multiplyScalar(2.9);
+    robot.position.x=FACTORY_C.x+toFac.x;
+    robot.position.z=FACTORY_C.z+toFac.y;
+  }
+  var rolled=fwd*SPD*dt/0.19;
+  for(var w=0;w<wheels.length;w++)wheels[w].rotation.y-=rolled;
+
+  if(!auto.on&&!frozen){
+    var aspd=2.0*dt;
+    if(keys['ArrowUp'])targetL.x+=aspd;
+    if(keys['ArrowDown'])targetL.x-=aspd;
+    if(keys['ArrowRight'])targetL.z+=aspd;
+    if(keys['ArrowLeft'])targetL.z-=aspd;
+    if(keys['KeyQ'])targetL.y+=aspd;
+    if(keys['KeyE'])targetL.y-=aspd;
+    targetL.x+=dz(tc.ax)*2.0*dt;
+    targetL.z+=dz(tc.az)*2.0*dt;
+    if(tc.up)targetL.y+=aspd;
+    if(tc.down)targetL.y-=aspd;
+  }
+  /* 추적 보조: 공을 들고 팔을 카트 근처에 두면 정책이 카트를 따라가려 "시도"
+     — 연속 정책(Mk.3+)은 동기화에 성공하지만, 격자 정책은 양자화 때문에 끊긴다 */
+  if(held===ball&&!auto.on&&!frozen){
+    var gW=armL2W(eeL);
+    if(Math.abs(gW.z-TRACK_Z)<0.9&&Math.abs(gW.x-cart.position.x)<1.0&&gW.y<1.3){
+      var thc=Math.cos(robot.rotation.y),ths=Math.sin(robot.rotation.y);
+      targetL.x+=cartVel.x*thc*dt;
+      targetL.z+=cartVel.x*ths*dt;
+      if(!trackLock){trackLock=true;showToast('🔄 정책이 카트 추적을 시도합니다 — 상대속도 ✓가 뜨면 살짝 놓으세요');}
+    }else trackLock=false;
+  }else trackLock=false;
+  targetL.y=Math.max(-0.32,Math.min(2.3,targetL.y));
+  var rad=Math.hypot(targetL.x,targetL.z),maxR=L1+L2E-0.12;
+  if(rad>maxR){targetL.x*=maxR/rad;targetL.z*=maxR/rad;}
+  if(rad<0.45){var s2=0.45/Math.max(rad,1e-4);targetL.x*=s2;targetL.z*=s2;}
+
+  pushHist(simT,targetL);
+
+  if(!frozen&&simT-lastSample>=1/E.rate){
+    lastSample=simT;
+    var obs,raw=null;
+    if(E.latency>0){
+      raw=targetAtPast(simT-E.latency);
+      obs=raw.clone();
+      if(E.rtc){
+        var prev=targetAtPast(simT-E.latency-0.1);
+        var vel=obs.clone().sub(prev).multiplyScalar(1/0.1);
+        obs.add(vel.multiplyScalar(E.latency*0.85));
+      }
+    }else obs=targetL.clone();
+    if(E.grid>0){
+      var obsW=armL2W(obs);
+      cmdL.copy(armW2L(new THREE.Vector3(
+        Math.round(obsW.x/E.grid)*E.grid,
+        Math.max(0.2,Math.round(obsW.y/E.grid)*E.grid),
+        Math.round(obsW.z/E.grid)*E.grid
+      )));
+    }else{
+      cmdL.copy(obs);
+    }
+    if(raw)ghostL=raw.clone();
+  }
+
+  var k=1-Math.pow(1-E.snap,dt*60);
+  eeL.lerp(cmdL,k);
+  var ik=solveIK(eeL);
+  var jk=era<=1?0.7:0.5;
+  yawG.rotation.y+=(ik.yaw-yawG.rotation.y)*jk;
+  shoulderG.rotation.z+=(ik.shoulder-shoulderG.rotation.z)*jk;
+  elbowG.rotation.z+=(ik.elbow-elbowG.rotation.z)*jk;
+
+  var eeW=getEEWorld();
+  eeVel.copy(eeW).sub(prevEE).divideScalar(Math.max(dt,1e-3));
+  eeSpeed=eeVel.length();
+  prevEE.copy(eeW);
+  var near=nearestGrabbable();
+  var fy=held?((held===ball?BALL_R:PROD_S/2)+0.028):(gripOpen?FINGER_OPEN:FINGER_CLOSED);
+  fingerT.position.y+=(fy-fingerT.position.y)*0.35;
+  fingerB.position.y+=(-fy-fingerB.position.y)*0.35;
+  ball.userData.floorY=supportHeightAt(ball.position.x,ball.position.z)+BALL_R;
+  ballBeam.visible=ball.visible&&held!==ball;
+  if(ballBeam.visible){
+    ballBeam.position.set(ball.position.x,ball.position.y+1.15,ball.position.z);
+    ballBeam.material.opacity=0.14+0.1*(1+Math.sin(simT*3))/2;
+  }
+  var objs=[ball].concat(products);
+  for(var o=0;o<objs.length;o++){
+    var ob=objs[o];
+    if(ob===held||!ob.visible)continue;
+    if(ob===ball&&(simT<ballSocketUntil||simT<ballCartUntil||simT<ballDlvUntil))continue;
+    if(ob.userData.slide!==undefined&&ob.userData.slide<1)continue;
+    if(ob.position.y>ob.userData.floorY+0.001){
+      ob.userData.vy-=9.8*dt;
+      ob.position.y+=ob.userData.vy*dt;
+      if(ob.position.y<=ob.userData.floorY){ob.position.y=ob.userData.floorY;ob.userData.vy=0;}
+    }
+  }
+  ballMat.emissiveIntensity+=(((near===ball)?0.55+0.25*Math.sin(simT*8):0)-ballMat.emissiveIntensity)*0.2;
+  for(var p2=0;p2<products.length;p2++){
+    var pm=products[p2].material;
+    pm.emissiveIntensity+=(((near===products[p2])?0.45+0.2*Math.sin(simT*8):0.05)-pm.emissiveIntensity)*0.2;
+  }
+  if(held===ball){
+    var dIn=eeW.distanceTo(INPUT_W);
+    inRing.material.opacity=dIn<1.3?0.6+0.4*Math.sin(simT*9):0.9;
+    inRing.scale.setScalar(dIn<1.3?1+0.12*Math.sin(simT*9):1);
+  }else{inRing.material.opacity=0.9;inRing.scale.setScalar(1);}
+
+  updateFactory(dt,simT);
+  updateCart(dt);
+
+  var tgtW=armL2W(targetL);
+  tgtG.position.copy(tgtW);
+  tgtRing.rotation.z=simT*1.2;
+  cmdM.position.copy(armL2W(cmdL));
+  if(ghostM.visible&&ghostL)ghostM.position.copy(armL2W(ghostL));
+  if(snapGrid.visible){
+    var g=E.grid;
+    snapGrid.position.set(Math.round(tgtW.x/g)*g,tgtW.y,Math.round(tgtW.z/g)*g);
+  }
+
+  if(trailLen<TRAIL_N){
+    trailPos[trailLen*3]=eeW.x;trailPos[trailLen*3+1]=eeW.y;trailPos[trailLen*3+2]=eeW.z;
+    trailLen++;
+  }else{
+    trailPos.copyWithin(0,3);
+    trailPos[(TRAIL_N-1)*3]=eeW.x;trailPos[(TRAIL_N-1)*3+1]=eeW.y;trailPos[(TRAIL_N-1)*3+2]=eeW.z;
+  }
+  trailGeo.attributes.position.needsUpdate=true;
+  trailGeo.setDrawRange(0,trailLen);
+
+  /* 소켓 연출 */
+  sockFlash=Math.max(0,sockFlash-dt*1.5);
+  sockRingMat.color.setHex(sockFlash>0?0x7BD88F:0xB392F9);
+  if(ballSocketUntil>0){
+    if(simT<ballSocketUntil){ball.position.copy(SOCKET_W);ball.userData.vy=0;}
+    else{ballSocketUntil=0;spawnMaterial();}
+  }
+  dlvFlash=Math.max(0,dlvFlash-dt*1.5);
+  dlvRingMat.color.setHex(dlvFlash>0?0x7BD88F:0xFFB454);
+  if(ballDlvUntil>0){
+    if(simT<ballDlvUntil){ball.position.set(DELIVER_W.x,0.13,DELIVER_W.z);ball.userData.vy=0;}
+    else{ballDlvUntil=0;spawnMaterial();}
+  }
+  if(!held&&ball.visible&&ballDlvUntil===0&&ballCartUntil===0&&ballSocketUntil===0&&era!==4
+     &&Math.hypot(ball.position.x-ZONE_C.x,ball.position.z-ZONE_C.z)<ZONE_R){
+    ballZoneT+=dt;
+    if(ballZoneT>3){ballZoneT=0;spawnMaterial();showToast('🛸 회수 드론이 음영 구역의 재료를 회수했어요');}
+  }else ballZoneT=0;
+
+  if(mission.active){
+    var mel=simT-mission.startT;
+    var MM=MISSIONS[mission.idx];
+    mission.errSum+=eeW.distanceTo(tgtW)*dt;
+    mission.errT+=dt;
+    if(MM.wall&&MM.failAfter&&mel>MM.failAfter){
+      wallHit();
+    }else{
+      var txt='⏱ '+mel.toFixed(1)+'s'+(MM.failAfter?' / '+MM.failAfter+'s':'');
+      if(MM.type==='socket'&&held===ball){
+        txt+=' · 소켓까지 '+Math.round(eeW.distanceTo(SOCKET_W)*100)+'cm';
+      }else if(MM.type==='cart'&&held===ball){
+        var rsv=eeVel.clone().sub(cartVel).length();
+        txt+=' · 상대속도 '+rsv.toFixed(2)+(rsv<0.35?' ✓':' ✗')+(cartSpd<0.4?' · 회차 중 🚫':'');
+      }else if(MM.type==='deliver'){
+        txt+=zone.state==='frozen'?' · 🔌 두절':(zone.state==='eject'?' · 🛟 복귀 중':'');
+      }else if(MM.timed){
+        txt+=' · 놓침 '+mission.drops+'회';
+      }
+      if(frozen)txt='⚠ 클라우드 두절 — 정지 중…';
+      mbTimer.textContent=txt;
+      mbTimer.classList.toggle('over',!!(frozen||(MM.failAfter&&mel>MM.failAfter*0.75)));
+    }
+  }
+
+  errTick+=dt;
+  smoothErr=smoothErr*0.95+eeW.distanceTo(tgtW)*0.05;
+  if(errTick>0.25){
+    errTick=0;
+    var errEl=document.getElementById('rErr');
+    errEl.textContent=(smoothErr*100).toFixed(1)+' cm';
+    errEl.className='v '+(smoothErr>0.35?'lat':(smoothErr>0.15?'hi':'ok'));
+  }
+
+  cam.target.lerp(new THREE.Vector3(robot.position.x,1.0,robot.position.z),0.06);
+  updateOrbit();
+
+  renderer.render(scene,camera);
+}
+
+function resize(){
+  var w=window.innerWidth,h=window.innerHeight;
+  renderer.setSize(w,h,false);
+  camera.aspect=w/h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize',resize);
+resize();
+updateOrbit();
+animate();
+})();
+</script>
+
+<!-- ══════════ 메뉴얼 내 2D 데모 (메뉴얼 열림 중에만 구동) ══════════ -->
+<script>
+(function(){
+'use strict';
+var DPR=Math.min(window.devicePixelRatio||1,2);
+function fitCanvas(c){
+  var w=c.clientWidth,h=parseInt(c.getAttribute('height'),10);
+  c.width=Math.max(1,w*DPR);c.height=h*DPR;
+  c.style.height=h+'px';
+  var ctx=c.getContext('2d');
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  return {ctx:ctx,w:w,h:h};
+}
+
+/* ── 히어로: 시대별 2D 로봇 팔 ── */
+var M_ERAS=[
+  {rep:"이산 토큰 (자기회귀)",hz:"~3 Hz",model:"RT-1 / RT-2",feel:"계단식 · 끊김",rate:3,grid:34,latency:0,chunk:0},
+  {rep:"이산 토큰 + 디퓨전 헤드",hz:"~10 Hz",model:"Octo / OpenVLA",feel:"개선된 추종",rate:10,grid:16,latency:0,chunk:0},
+  {rep:"연속 청크 (flow matching)",hz:"~50 Hz",model:"π0 / CogACT",feel:"부드러운 곡선",rate:50,grid:0,latency:0,chunk:0},
+  {rep:"System 2 계획 + System 1 행동",hz:"추론 수 Hz / 행동 ~120 Hz",model:"GR00T N1 / Gemini Robotics",feel:"계획적 + 반사적",rate:120,grid:0,latency:0,chunk:0,dual:true},
+  {rep:"1-bit + 병렬 디코딩 + RTC",hz:"실시간 (지연 흡수)",model:"BitVLA / PD-VLA / RTC",feel:"지연에도 무중단",rate:120,grid:0,latency:0.3,chunk:1,dual:true}
+];
+var mEra=0;
+var armC=document.getElementById('mArmCanvas');
+var arm={ctx:armC.getContext('2d'),w:0,h:300};
+var L1=110,L2=95;
+var base={x:0,y:0},ee={x:0,y:0},cmd={x:0,y:0};
+var lastSample=0,tokenFlash=0;
+var mt0=performance.now();
+
+function targetAt(t){
+  var cx=arm.w*0.62,cy=arm.h*0.5;
+  return {
+    x:cx+Math.cos(t*0.45)*arm.w*0.16+Math.cos(t*1.3)*18,
+    y:cy+Math.sin(t*0.7)*arm.h*0.26
+  };
+}
+function quant(v,g){return g>0?Math.round(v/g)*g:v;}
+function solveIK2(tx,ty){
+  var dx=tx-base.x,dy=ty-base.y;
+  var d=Math.min(Math.hypot(dx,dy),L1+L2-2);
+  d=Math.max(d,Math.abs(L1-L2)+2);
+  var a=Math.atan2(dy,dx);
+  var cosA2=(L1*L1+d*d-L2*L2)/(2*L1*d);
+  var a2=Math.acos(Math.max(-1,Math.min(1,cosA2)));
+  var sh=a-a2;
+  var cosE=(L1*L1+L2*L2-d*d)/(2*L1*L2);
+  var el=Math.PI-Math.acos(Math.max(-1,Math.min(1,cosE)));
+  return {sh:sh,el:el};
+}
+function drawArm(now){
+  var ctx=arm.ctx,W=arm.w,H=arm.h;
+  base.x=W*0.18;base.y=H*0.62;
+  var t=(now-mt0)/1000;
+  var tgt=targetAt(t);
+  var E=M_ERAS[mEra];
+  var interval=1/E.rate;
+  if(t-lastSample>=interval){
+    lastSample=t;
+    tokenFlash=1;
+    var obs=tgt;
+    if(E.latency>0){obs=targetAt(t-E.latency);}
+    if(E.chunk===1){
+      var ahead=targetAt(t);
+      obs={x:(obs.x+ahead.x*2)/3,y:(obs.y+ahead.y*2)/3};
+    }
+    cmd.x=quant(obs.x,E.grid);
+    cmd.y=quant(obs.y,E.grid);
+  }
+  var k=E.rate>=50?0.18:0.32;
+  ee.x+=(cmd.x-ee.x)*k;
+  ee.y+=(cmd.y-ee.y)*k;
+
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle='rgba(255,255,255,.05)';ctx.lineWidth=1;
+  for(var gx=0;gx<W;gx+=28){ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,H);ctx.stroke();}
+  for(var gy=0;gy<H;gy+=28){ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(W,gy);ctx.stroke();}
+  if(E.grid>0){
+    ctx.strokeStyle='rgba(255,180,84,.10)';
+    for(var qx=0;qx<W;qx+=E.grid){ctx.beginPath();ctx.moveTo(qx,0);ctx.lineTo(qx,H);ctx.stroke();}
+    for(var qy=0;qy<H;qy+=E.grid){ctx.beginPath();ctx.moveTo(0,qy);ctx.lineTo(W,qy);ctx.stroke();}
+  }
+  ctx.beginPath();ctx.arc(tgt.x,tgt.y,9,0,Math.PI*2);
+  ctx.strokeStyle='#53D7E0';ctx.lineWidth=2;ctx.stroke();
+  ctx.beginPath();ctx.arc(tgt.x,tgt.y,2.5,0,Math.PI*2);
+  ctx.fillStyle='#53D7E0';ctx.fill();
+  ctx.font='11px IBM Plex Mono';ctx.fillStyle='rgba(83,215,224,.8)';
+  ctx.fillText('target',tgt.x+14,tgt.y+4);
+  ctx.beginPath();ctx.arc(cmd.x,cmd.y,4,0,Math.PI*2);
+  ctx.fillStyle='rgba(255,180,84,'+(0.35+0.5*tokenFlash)+')';ctx.fill();
+
+  var ik=solveIK2(ee.x,ee.y);
+  var jx=base.x+Math.cos(ik.sh)*L1,jy=base.y+Math.sin(ik.sh)*L1;
+  var hx=jx+Math.cos(ik.sh+ik.el)*L2,hy=jy+Math.sin(ik.sh+ik.el)*L2;
+  ctx.fillStyle='#27303F';
+  ctx.fillRect(base.x-26,base.y+10,52,8);
+  ctx.beginPath();ctx.arc(base.x,base.y,11,0,Math.PI*2);ctx.fillStyle='#39455A';ctx.fill();
+  ctx.lineCap='round';
+  ctx.strokeStyle='#E9EDF4';ctx.lineWidth=7;
+  ctx.beginPath();ctx.moveTo(base.x,base.y);ctx.lineTo(jx,jy);ctx.stroke();
+  ctx.strokeStyle='#C4CDDA';ctx.lineWidth=5.5;
+  ctx.beginPath();ctx.moveTo(jx,jy);ctx.lineTo(hx,hy);ctx.stroke();
+  ctx.beginPath();ctx.arc(jx,jy,6,0,Math.PI*2);ctx.fillStyle='#39455A';ctx.fill();
+  ctx.strokeStyle='#FFB454';ctx.lineWidth=3;
+  var ga=ik.sh+ik.el;
+  ctx.beginPath();
+  ctx.moveTo(hx,hy);ctx.lineTo(hx+Math.cos(ga-0.5)*14,hy+Math.sin(ga-0.5)*14);
+  ctx.moveTo(hx,hy);ctx.lineTo(hx+Math.cos(ga+0.5)*14,hy+Math.sin(ga+0.5)*14);
+  ctx.stroke();
+
+  if(E.dual){
+    var pulse=0.5+0.5*Math.sin(t*2.2);
+    ctx.font='11px IBM Plex Mono';
+    ctx.fillStyle='rgba(179,146,249,'+(0.45+0.4*pulse)+')';
+    ctx.fillText('System 2: planning…',18,26);
+    ctx.fillStyle='rgba(255,180,84,.85)';
+    ctx.fillText('System 1: acting @ high-rate',18,44);
+  }
+  if(E.latency>0){
+    ctx.font='11px IBM Plex Mono';ctx.fillStyle='rgba(146,160,181,.9)';
+    ctx.fillText('inference latency ~'+Math.round(E.latency*1000)+'ms → RTC inpainting',18,H-16);
+  }
+  if(E.grid>0){
+    ctx.font='11px IBM Plex Mono';ctx.fillStyle='rgba(255,180,84,'+(0.4+0.55*tokenFlash)+')';
+    ctx.fillText('action token →  Δx:'+Math.round(cmd.x-ee.x)+'  Δy:'+Math.round(cmd.y-ee.y),18,26);
+  }
+  tokenFlash=Math.max(0,tokenFlash-0.06);
+}
+function setMEra(i){
+  mEra=i;
+  var E=M_ERAS[i];
+  document.getElementById('mrd0').textContent=E.rep;
+  document.getElementById('mrd1').textContent=E.hz;
+  document.getElementById('mrd2').textContent=E.model;
+  document.getElementById('mrd3').textContent=E.feel;
+  var btns=document.querySelectorAll('.mera-btn');
+  for(var b=0;b<btns.length;b++)btns[b].classList.toggle('on',+btns[b].dataset.mera===i);
+}
+var mbtns=document.querySelectorAll('.mera-btn');
+for(var mi=0;mi<mbtns.length;mi++){
+  mbtns[mi].addEventListener('click',function(){setMEra(+this.dataset.mera);});
+}
+setMEra(0);
+
+/* ── Diffusion Policy ── */
+var diffC=document.getElementById('mDiffCanvas');
+var dd={ctx:diffC.getContext('2d'),w:0,h:210};
+var N=60;
+function basePath(W,H){
+  var pts=[];
+  for(var j=0;j<N;j++){
+    var u=j/(N-1);
+    pts.push({
+      x:W*0.08+u*W*0.84,
+      y:H*0.5+Math.sin(u*Math.PI*1.6)*H*0.26-Math.sin(u*Math.PI*0.5)*H*0.1
+    });
+  }
+  return pts;
+}
+var noise=[];
+(function(){var s=42;function rnd(){s=(s*16807)%2147483647;return (s/2147483647)*2-1;}
+  for(var j=0;j<N;j++){noise.push({x:rnd(),y:rnd()});}})();
+function drawDiff(now){
+  var ctx=dd.ctx,W=dd.w,H=dd.h;
+  var cycle=4.5;
+  var t=((now-mt0)/1000)%cycle;
+  var prog=Math.min(1,t/(cycle*0.75));
+  var pts=basePath(W,H);
+  ctx.clearRect(0,0,W,H);
+  var steps=5;
+  for(var sIdx=0;sIdx<steps;sIdx++){
+    var p=Math.max(0,prog-(steps-sIdx)*0.13);
+    var amp=(1-p)*(1-p)*60;
+    ctx.beginPath();
+    for(var j=0;j<N;j++){
+      var x=pts[j].x+noise[j].x*amp*(0.4+0.6*Math.sin(j*1.7));
+      var y=pts[j].y+noise[j].y*amp;
+      if(j===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    }
+    ctx.strokeStyle='rgba(146,160,181,'+(0.06+sIdx*0.05)+')';
+    ctx.lineWidth=1.5;ctx.stroke();
+  }
+  var amp2=(1-prog)*(1-prog)*60;
+  ctx.beginPath();
+  for(var j2=0;j2<N;j2++){
+    var x2=pts[j2].x+noise[j2].x*amp2*(0.4+0.6*Math.sin(j2*1.7));
+    var y2=pts[j2].y+noise[j2].y*amp2;
+    if(j2===0)ctx.moveTo(x2,y2);else ctx.lineTo(x2,y2);
+  }
+  ctx.strokeStyle=prog>0.98?'#FFB454':'rgba(255,180,84,'+(0.35+prog*0.65)+')';
+  ctx.lineWidth=2.5;ctx.stroke();
+  ctx.beginPath();ctx.arc(pts[0].x,pts[0].y,5,0,Math.PI*2);ctx.fillStyle='#53D7E0';ctx.fill();
+  ctx.beginPath();ctx.arc(pts[N-1].x,pts[N-1].y,5,0,Math.PI*2);ctx.fillStyle='#7BD88F';ctx.fill();
+  ctx.font='11px IBM Plex Mono';ctx.fillStyle='#92A0B5';
+  ctx.fillText('start',pts[0].x-10,pts[0].y-12);
+  ctx.fillText('goal',pts[N-1].x-14,pts[N-1].y-12);
+  ctx.fillText('denoising step: '+Math.round(prog*100)+'/100',16,22);
+}
+
+/* ── 교차-신체 ── */
+var xemC=document.getElementById('mXemCanvas');
+var xd={ctx:xemC.getContext('2d'),w:0,h:230};
+function robotGlyph(ctx,x,y,kind,col){
+  ctx.strokeStyle=col;ctx.lineWidth=2;ctx.lineCap='round';
+  ctx.beginPath();
+  if(kind===0){
+    ctx.moveTo(x-14,y+16);ctx.lineTo(x-14,y-2);ctx.lineTo(x+4,y-14);ctx.lineTo(x+16,y-4);
+  }else if(kind===1){
+    ctx.moveTo(x-18,y+2);ctx.lineTo(x-6,y-12);ctx.moveTo(x+18,y+2);ctx.lineTo(x+6,y-12);
+    ctx.moveTo(x-6,y-12);ctx.lineTo(x+6,y-12);ctx.moveTo(x,y-12);ctx.lineTo(x,y+16);
+  }else{
+    ctx.rect(x-16,y+4,32,10);
+    ctx.moveTo(x,y+4);ctx.lineTo(x,y-10);ctx.lineTo(x+14,y-16);
+  }
+  ctx.stroke();
+  if(kind===2){
+    ctx.beginPath();ctx.arc(x-9,y+18,3.5,0,Math.PI*2);ctx.arc(x+9,y+18,3.5,0,Math.PI*2);
+    ctx.fillStyle=col;ctx.fill();
+  }
+}
+function qp(p0,p1,p2,uu){var a=1-uu;return {x:a*a*p0.x+2*a*uu*p1.x+uu*uu*p2.x,y:a*a*p0.y+2*a*uu*p1.y+uu*uu*p2.y};}
+function drawXem(now){
+  var ctx=xd.ctx,W=xd.w,H=xd.h;
+  var t=(now-mt0)/1000;
+  ctx.clearRect(0,0,W,H);
+  var lx=W*0.13,rx=W*0.87,cy=H*0.5;
+  var rows=[H*0.22,H*0.5,H*0.78];
+  var cols=['#53D7E0','#B392F9','#7BD88F'];
+  var bw=Math.min(180,W*0.26),bh=80;
+  ctx.fillStyle='#1C2433';ctx.strokeStyle='#39455A';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.roundRect(W/2-bw/2,cy-bh/2,bw,bh,10);ctx.fill();ctx.stroke();
+  ctx.font='600 13px IBM Plex Sans KR';ctx.fillStyle='#E9EDF4';ctx.textAlign='center';
+  ctx.fillText('하나의 범용 정책',W/2,cy-5);
+  ctx.font='11px IBM Plex Mono';ctx.fillStyle='#92A0B5';
+  ctx.fillText('Octo · OpenVLA',W/2,cy+14);
+  ctx.textAlign='left';
+  for(var r=0;r<3;r++){
+    robotGlyph(ctx,lx,rows[r],r,cols[r]);
+    robotGlyph(ctx,rx,rows[r],r,cols[r]);
+    ctx.strokeStyle='rgba(146,160,181,.35)';ctx.lineWidth=1.2;
+    ctx.beginPath();ctx.moveTo(lx+28,rows[r]);ctx.quadraticCurveTo(W*0.34,rows[r],W/2-bw/2-6,cy+(r-1)*16);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(W/2+bw/2+6,cy+(r-1)*16);ctx.quadraticCurveTo(W*0.66,rows[r],rx-28,rows[r]);ctx.stroke();
+    var u=(t*0.35+r*0.33)%1;
+    var pIn=qp({x:lx+28,y:rows[r]},{x:W*0.34,y:rows[r]},{x:W/2-bw/2-6,y:cy+(r-1)*16},u);
+    var pOut=qp({x:W/2+bw/2+6,y:cy+(r-1)*16},{x:W*0.66,y:rows[r]},{x:rx-28,y:rows[r]},u);
+    ctx.beginPath();ctx.arc(pIn.x,pIn.y,3,0,Math.PI*2);ctx.fillStyle=cols[r];ctx.fill();
+    ctx.beginPath();ctx.arc(pOut.x,pOut.y,3,0,Math.PI*2);ctx.fillStyle='#FFB454';ctx.fill();
+  }
+  ctx.font='11px IBM Plex Mono';ctx.fillStyle='#92A0B5';
+  ctx.fillText('22종 로봇의 시연 데이터',16,20);
+  ctx.textAlign='right';
+  ctx.fillText('같은 가중치 → 다른 몸체 제어',W-16,20);
+  ctx.textAlign='left';
+}
+
+/* ── 이산 vs 연속 ── */
+var flowC=document.getElementById('mFlowCanvas');
+var fd={ctx:flowC.getContext('2d'),w:0,h:220};
+var trailL=[],trailR=[];
+function drawFlow(now){
+  var ctx=fd.ctx,W=fd.w,H=fd.h;
+  var t=(now-mt0)/1000;
+  ctx.clearRect(0,0,W,H);
+  var half=W/2;
+  ctx.strokeStyle='#27303F';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(half,12);ctx.lineTo(half,H-12);ctx.stroke();
+  function ref(u,ox,w){
+    return {x:ox+w*0.12+((u%1))*w*0.76,
+            y:H*0.55+Math.sin((u%1)*Math.PI*2)*H*0.22};
+  }
+  var u=(t*0.22)%1;
+  var stepHz=4;
+  var su=Math.floor(u*stepHz*5)/(stepHz*5);
+  var pL=ref(su,0,half);
+  pL.x=Math.round(pL.x/14)*14;pL.y=Math.round(pL.y/14)*14;
+  trailL.push({x:pL.x,y:pL.y,a:1});
+  var pR=ref(u,half,half);
+  trailR.push({x:pR.x,y:pR.y,a:1});
+  if(trailL.length>140)trailL.shift();
+  if(trailR.length>140)trailR.shift();
+  function drawTrail(tr,col,step){
+    for(var j=1;j<tr.length;j++){
+      tr[j-1].a*=0.992;
+      if(Math.abs(tr[j].x-tr[j-1].x)>60)continue;
+      ctx.strokeStyle=col.replace('@',(tr[j].a*0.9).toFixed(2));
+      ctx.lineWidth=step?2.5:2;
+      ctx.beginPath();ctx.moveTo(tr[j-1].x,tr[j-1].y);
+      if(step){ctx.lineTo(tr[j].x,tr[j-1].y);ctx.lineTo(tr[j].x,tr[j].y);}
+      else ctx.lineTo(tr[j].x,tr[j].y);
+      ctx.stroke();
+    }
+  }
+  drawTrail(trailL,'rgba(255,180,84,@)',true);
+  drawTrail(trailR,'rgba(123,216,143,@)',false);
+  ctx.beginPath();ctx.arc(pL.x,pL.y,5,0,Math.PI*2);ctx.fillStyle='#FFB454';ctx.fill();
+  ctx.beginPath();ctx.arc(pR.x,pR.y,5,0,Math.PI*2);ctx.fillStyle='#7BD88F';ctx.fill();
+  ctx.font='11px IBM Plex Mono';ctx.fillStyle='#92A0B5';
+  ctx.fillText('이산 토큰 · ~5Hz · 계단식',16,22);
+  ctx.fillText('연속 청크 · ~50Hz · flow matching',half+16,22);
+}
+
+/* ── BitVLA / PD-VLA / RTC ── */
+var bitC=document.getElementById('mBitCanvas');
+var bd={ctx:bitC.getContext('2d'),w:0,h:170};
+function drawBit(now){
+  var ctx=bd.ctx,W=bd.w,H=bd.h;
+  var t=(now-mt0)/1000;
+  var phase=Math.floor(t/2.2)%2;
+  var mix=Math.min(1,(t%2.2)/0.5);
+  if(phase===0)mix=1-mix;
+  ctx.clearRect(0,0,W,H);
+  var cols=10,rows=5,pad=14;
+  var cw=(W-pad*2)/cols,ch=(H-52)/rows;
+  var s=7;
+  function rnd(){s=(s*16807)%2147483647;return s/2147483647;}
+  for(var r=0;r<rows;r++){
+    for(var c=0;c<cols;c++){
+      var v=rnd();
+      var x=pad+c*cw,y=36+r*ch;
+      var hue=v*200+160;
+      var fullCol='hsl('+hue+',45%,'+(30+v*35)+'%)';
+      var tern=v<0.33?'#39455A':(v<0.66?'#10141B':'#FFB454');
+      ctx.fillStyle=mix>0.5?tern:fullCol;
+      ctx.globalAlpha=0.55+0.45*Math.abs(mix-0.5)*2;
+      ctx.fillRect(x+1.5,y+1.5,cw-3,ch-3);
+      ctx.globalAlpha=1;
+    }
+  }
+  ctx.font='10.5px IBM Plex Mono';ctx.fillStyle='#92A0B5';
+  ctx.fillText(mix>0.5?'1.58-bit {-1,0,+1} · 메모리 ≈30%':'FP16 가중치 · 메모리 100%',14,22);
+}
+var pdC=document.getElementById('mPdCanvas');
+var pd2={ctx:pdC.getContext('2d'),w:0,h:170};
+function drawPD(now){
+  var ctx=pd2.ctx,W=pd2.w,H=pd2.h;
+  var t=((now-mt0)/1000)%3.2;
+  ctx.clearRect(0,0,W,H);
+  var n=8,pad=14,bw=(W-pad*2-(n-1)*4)/n;
+  var doneSeq=Math.min(n,Math.floor(t/(2.4/n)));
+  var doneParWave=t<0.6?0:(t<1.2?1:2);
+  for(var j=0;j<n;j++){
+    var x=pad+j*(bw+4);
+    ctx.fillStyle=j<doneSeq?'#FFB454':'#1C2433';
+    ctx.strokeStyle='#39455A';
+    ctx.beginPath();ctx.roundRect(x,46,bw,24,4);ctx.fill();ctx.stroke();
+    var pdone=(doneParWave>=1&&j%2===0)||doneParWave>=2;
+    ctx.fillStyle=pdone?'#7BD88F':'#1C2433';
+    ctx.beginPath();ctx.roundRect(x,112,bw,24,4);ctx.fill();ctx.stroke();
+  }
+  ctx.font='10.5px IBM Plex Mono';ctx.fillStyle='#92A0B5';
+  ctx.fillText('자기회귀: 하나씩 (8 step)',14,34);
+  ctx.fillText('병렬: 한꺼번에 (≈2 step) → ~2.5×',14,100);
+}
+var rtcC=document.getElementById('mRtcCanvas');
+var rd={ctx:rtcC.getContext('2d'),w:0,h:170};
+function drawRTC(now){
+  var ctx=rd.ctx,W=rd.w,H=rd.h;
+  var t=((now-mt0)/1000)%4;
+  ctx.clearRect(0,0,W,H);
+  var pad=14,bw=W-pad*2;
+  var y1=46,y2=112,bh=22;
+  ctx.font='10.5px IBM Plex Mono';ctx.fillStyle='#92A0B5';
+  ctx.fillText('일반: 청크 사이 지연 → 멈칫',14,34);
+  ctx.fillText('RTC: 이어붙임 → 무중단',14,100);
+  var prog=t/4;
+  function chunkBar(y,gap){
+    var cn=3,cw=bw/cn;
+    for(var j=0;j<cn;j++){
+      var x=pad+j*cw;
+      var w=gap?cw-22:cw-4;
+      ctx.fillStyle='#1C2433';ctx.strokeStyle='#39455A';
+      ctx.beginPath();ctx.roundRect(x,y,w,bh,4);ctx.fill();ctx.stroke();
+      if(gap){ctx.fillStyle='rgba(255,93,93,.25)';ctx.fillRect(x+w,y,18,bh);}
+      else{ctx.fillStyle='rgba(123,216,143,.3)';ctx.fillRect(x+w-15,y,15,bh);}
+    }
+  }
+  chunkBar(y1,true);
+  chunkBar(y2,false);
+  var hx=pad+prog*bw;
+  var cn=3,cw=bw/cn;
+  var local=(prog*bw)%cw;
+  var stalled=local>cw-22;
+  ctx.fillStyle=stalled?'#FF5D5D':'#FFB454';
+  ctx.beginPath();ctx.arc(Math.min(hx,pad+Math.floor(prog*bw/cw)*cw+cw-22),y1+bh/2,5,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#7BD88F';
+  ctx.beginPath();ctx.arc(hx,y2+bh/2,5,0,Math.PI*2);ctx.fill();
+  if(stalled){
+    ctx.font='10px IBM Plex Mono';ctx.fillStyle='#FF5D5D';
+    ctx.fillText('stall',Math.min(hx,W-44),y1-6);
+  }
+}
+
+/* ── roundRect 폴리필 ── */
+if(!CanvasRenderingContext2D.prototype.roundRect){
+  CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){
+    this.moveTo(x+r,y);this.arcTo(x+w,y,x+w,y+h,r);this.arcTo(x+w,y+h,x,y+h,r);
+    this.arcTo(x,y+h,x,y,r);this.arcTo(x,y,x+w,y,r);this.closePath();return this;
+  };
+}
+
+/* ── 라이프사이클: 메뉴얼 열림 중에만 구동 ── */
+var running=false,rafId=0;
+function fitAll(){
+  arm=fitCanvas(armC);
+  dd=fitCanvas(diffC);
+  xd=fitCanvas(xemC);
+  fd=fitCanvas(flowC);
+  bd=fitCanvas(bitC);
+  pd2=fitCanvas(pdC);
+  rd=fitCanvas(rtcC);
+  trailL.length=0;trailR.length=0;
+}
+function inView(c){
+  var r=c.getBoundingClientRect();
+  return r.bottom>0&&r.top<window.innerHeight;
+}
+function loop(now){
+  if(!running)return;
+  if(inView(armC))drawArm(now);
+  if(inView(diffC))drawDiff(now);
+  if(inView(xemC))drawXem(now);
+  if(inView(flowC))drawFlow(now);
+  if(inView(bitC))drawBit(now);
+  if(inView(pdC))drawPD(now);
+  if(inView(rtcC))drawRTC(now);
+  rafId=requestAnimationFrame(loop);
+}
+window.mdStart=function(){
+  if(running)return;
+  running=true;
+  requestAnimationFrame(function(){ // display:block 반영 후 측정
+    fitAll();
+    mt0=performance.now();
+    lastSample=0;
+    rafId=requestAnimationFrame(loop);
+  });
+};
+window.mdStop=function(){
+  running=false;
+  cancelAnimationFrame(rafId);
+};
+window.addEventListener('resize',function(){
+  if(running)fitAll();
+});
+})();
+</script>
+</body>
+</html>
